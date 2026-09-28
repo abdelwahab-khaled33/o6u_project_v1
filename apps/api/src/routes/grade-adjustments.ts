@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
+import { requireUuidParam } from '../lib/uuid-param.js';
 import { requireAuth, requirePermission, requireRoles } from '../middleware/auth.js';
 import { isDoctorOfSubject } from '../services/subject-access.js';
 import { applyGradeCompensation } from '../services/grade-adjustment.js';
@@ -21,6 +22,7 @@ gradeAdjustmentsRouter.post(
   '/exams/:examId/compensate',
   requireRoles('admin', 'doctor'),
   requirePermission('grades.adjust'),
+  requireUuidParam('examId', 'Exam not found'),
   async (req, res, next) => {
     try {
       const parsed = CompensateExamSchema.safeParse(req.body);
@@ -88,6 +90,7 @@ gradeAdjustmentsRouter.get(
   '/exams/:examId/adjustments',
   requireRoles('admin', 'doctor'),
   requirePermission('grades.adjust'),
+  requireUuidParam('examId', 'Exam not found'),
   async (req, res, next) => {
     try {
       const exam = await prisma.exam.findUnique({

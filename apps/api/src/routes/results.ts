@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
+import { isUuid, requireUuidParam } from '../lib/uuid-param.js';
 import { requireAuth, requirePermission, requireRoles } from '../middleware/auth.js';
 import { isDoctorOfSubject } from '../services/subject-access.js';
 import {
@@ -14,7 +15,7 @@ import { buildAllScopeWorkbook, buildSingleScopeWorkbook, sendWorkbook } from '.
 export const resultsRouter = Router();
 resultsRouter.use(requireAuth);
 
-resultsRouter.get('/exams/:examId', requireRoles('admin', 'doctor', 'ta'), requirePermission('results.view'), async (req, res, next) => {
+resultsRouter.get('/exams/:examId', requireRoles('admin', 'doctor', 'ta'), requirePermission('results.view'), requireUuidParam('examId', 'Exam not found'), async (req, res, next) => {
   try {
     const exam = await prisma.exam.findUnique({
       where: { id: req.params.examId as string },
@@ -49,7 +50,7 @@ resultsRouter.get('/exams/:examId', requireRoles('admin', 'doctor', 'ta'), requi
   }
 });
 
-resultsRouter.get('/subjects/:subjectId', requireRoles('admin', 'doctor'), requirePermission('results.view'), async (req, res, next) => {
+resultsRouter.get('/subjects/:subjectId', requireRoles('admin', 'doctor'), requirePermission('results.view'), requireUuidParam('subjectId', 'Subject not found'), async (req, res, next) => {
   try {
     const subject = await prisma.subject.findUnique({
       where: { id: req.params.subjectId as string },
@@ -87,6 +88,12 @@ resultsRouter.get('/export', requireRoles('admin', 'doctor', 'ta'), requirePermi
     }
     const scope = scopeParsed.data;
 
+    // Deliberately after the scope check: a request invalid on both axes must still
+    // report the 400, which is what it did before this guard existed.
+    if (!isUuid(subjectIdRaw)) {
+      return res.status(404).json({ error: 'Subject not found' });
+    }
+
     const subject = await prisma.subject.findUnique({
       where: { id: subjectIdRaw },
       select: { id: true, code: true, name: true },
@@ -105,6 +112,9 @@ resultsRouter.get('/export', requireRoles('admin', 'doctor', 'ta'), requirePermi
     }
 
     const [kind, examId] = scope.split(':') as ['exam' | 'quiz', string];
+    if (!isUuid(examId)) {
+      return res.status(404).json({ error: 'Exam not found' });
+    }
 
     const exam = await prisma.exam.findUnique({
       where: { id: examId },
