@@ -98,7 +98,10 @@ export async function generateStudentExamsForExam(
     throw new Error(sufficiency.error);
   }
 
-  const eligibleStudentIds = await getEligibleStudentIds(exam);
+  // The client must be threaded through: for sections/student_list scopes the target
+  // rows are still uncommitted when this runs, and the default singleton cannot see them,
+  // which silently produced zero attempts for every TA quiz created approved in-transaction.
+  const eligibleStudentIds = await getEligibleStudentIds(exam, client);
   if (eligibleStudentIds.length === 0) {
     return { generated: 0 };
   }

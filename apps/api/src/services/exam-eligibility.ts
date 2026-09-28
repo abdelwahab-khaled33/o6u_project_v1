@@ -1,9 +1,14 @@
 import { prisma } from '../lib/prisma.js';
-import type { Exam } from '@prisma/client';
+import type { Exam, Prisma } from '@prisma/client';
 
-export async function getEligibleStudentIds(exam: Exam): Promise<string[]> {
+type EligibilityClient = Pick<Prisma.TransactionClient, 'enrollment' | 'examTargetSection' | 'sectionMembership' | 'examTargetStudent'>;
+
+export async function getEligibleStudentIds(
+  exam: Exam,
+  client: EligibilityClient = prisma,
+): Promise<string[]> {
   if (exam.target_scope === 'subject') {
-    const enrollments = await prisma.enrollment.findMany({
+    const enrollments = await client.enrollment.findMany({
       where: { subject_id: exam.subject_id },
       select: { student_id: true },
     });
@@ -11,20 +16,20 @@ export async function getEligibleStudentIds(exam: Exam): Promise<string[]> {
   }
 
   if (exam.target_scope === 'sections') {
-    const targets = await prisma.examTargetSection.findMany({
+    const targets = await client.examTargetSection.findMany({
       where: { exam_id: exam.id },
       select: { section_id: true },
     });
     const sectionIds = targets.map((t) => t.section_id);
     if (sectionIds.length === 0) return [];
-    const memberships = await prisma.sectionMembership.findMany({
+    const memberships = await client.sectionMembership.findMany({
       where: { section_id: { in: sectionIds } },
       select: { student_id: true },
     });
     return [...new Set(memberships.map((m) => m.student_id))];
   }
 
-  const targets = await prisma.examTargetStudent.findMany({
+  const targets = await client.examTargetStudent.findMany({
     where: { exam_id: exam.id },
     select: { student_id: true },
   });
