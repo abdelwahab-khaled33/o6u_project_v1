@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { requireAuth, requirePermission } from '../middleware/auth.js';
-import { canManageBank } from '../services/subject-access.js';
+import { canManageBank, buildScopedSubjectWhere } from '../services/subject-access.js';
 import {
   dryRunQuestionImport,
   commitQuestionImport,
@@ -67,12 +67,20 @@ export function normalizeQuestionAnswer(input: {
   return { ok: true, correct_answer };
 }
 
-function canEditQuestion(
+/**
+ * The single ownership authority for a question. A doctor owns their private bank;
+ * a TA owns only what they personally added to the shared subject bank.
+ *
+ * Deliberately no admin branch. Spec 9 grants question_bank.manage to doctor and ta
+ * only and the router enforces that key, so an admin cannot reach this today. Refusing
+ * keeps the dead path fail-closed: relaxing the router guard must never silently hand
+ * an admin edit rights over every question in the bank.
+ */
+export function canEditQuestion(
   q: { owner_type: string; doctor_id: string | null; added_by_ta_id: string | null },
   userId: string,
   role: string,
 ): boolean {
-  if (role === 'admin') return true;
   if (q.owner_type === 'doctor') return role === 'doctor' && q.doctor_id === userId;
   if (q.owner_type === 'ta_shared') return role === 'ta' && q.added_by_ta_id === userId;
   return false;
@@ -85,18 +93,32 @@ function canEditQuestion(
 questionBankRouter.get('/', async (req, res, next) => {
   try {
     const subjectId = req.query.subject_id as string | undefined;
-    const role = req.auth!.role;
+    const { userId, role } = req.auth!;
 
-    const base = subjectId ? { subject_id: subjectId } : {};
-    const visible =
-      role === 'admin'
-        ? base
-        : role === 'doctor'
-          ? { ...base, owner_type: 'doctor' as const, doctor_id: req.auth!.userId }
-          : { ...base, owner_type: 'ta_shared' as const };
+    // Same gate the create, import and export routes already use, so asking for a
+    // subject by id cannot read a bank the caller may not manage.
+    if (subjectId && !(await canManageBank(userId, role, subjectId))) {
+      return res.status(403).json({ error: 'You do not manage this subject' });
+    }
+
+    const ownerScope =
+      role === 'doctor'
+        ? { owner_type: 'doctor' as const, doctor_id: userId }
+        : role === 'ta'
+          ? { owner_type: 'ta_shared' as const }
+          : {};
 
     const questions = await prisma.question.findMany({
-      where: { ...visible, is_archived: false },
+      where: {
+        ...(subjectId ? { subject_id: subjectId } : {}),
+        is_archived: false,
+        ...ownerScope,
+        // Redundant once the gate above passes with a subject named, and deliberately so:
+        // an unqualified request has no subject to check, and this is the only thing
+        // stopping it from reading every shared bank in the university. It is the same
+        // scoping buildScopedSubjectWhere already gives GET /subjects.
+        subject: buildScopedSubjectWhere(role, userId),
+      },
       select: {
         id: true,
         question_type: true,
@@ -108,11 +130,37 @@ questionBankRouter.get('/', async (req, res, next) => {
         image_url: true,
         owner_type: true,
         created_at: true,
+        // Ownership columns are read here to answer can_edit, and are then dropped from
+        // the response. The relations carry the author a client needs to display; the
+        // raw columns would only tempt it into re-deriving ownership on its own.
+        doctor_id: true,
+        added_by_ta_id: true,
+        owner: { select: { id: true, full_name: true } },
+        added_by_ta: { select: { id: true, full_name: true } },
       },
       orderBy: { created_at: 'desc' },
     });
 
-    res.json({ questions });
+    res.json({
+      questions: questions.map((row) => {
+        // Answered from the full row, before the ownership columns are dropped below.
+        const can_edit = canEditQuestion(row, userId, role);
+        // is_mine is what the TA quiz wizard's own_questions pool needs, and it is answered here rather
+        // than in the browser because the browser cannot establish authorship: it would have to compare
+        // author.id with the signed-in user, which is the second ownership authority this design refuses
+        // to create. It matches exams.ts's own pool rule, so a picker filtered on it cannot 400.
+        const is_mine =
+          (row.owner_type === 'doctor' && row.doctor_id === userId)
+          || (row.owner_type === 'ta_shared' && row.added_by_ta_id === userId);
+        const { owner, added_by_ta, doctor_id: _doctorId, added_by_ta_id: _addedByTaId, ...question } = row;
+        return {
+          ...question,
+          author: row.owner_type === 'doctor' ? owner : added_by_ta,
+          can_edit,
+          is_mine,
+        };
+      }),
+    });
   } catch (err) {
     next(err);
   }
