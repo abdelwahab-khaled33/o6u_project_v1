@@ -43,6 +43,9 @@ export type ExamDetail = {
   difficulty_mix: DifficultyMixValue;
   points_per_question: number | string;
   target_scope: 'subject' | 'sections' | 'student_list';
+  /** null for a doctor exam. A TA quiz always carries one of the two quiz_source values; confirmed live,
+   *  because POST /exams as a TA without it is 400 "quiz_source is required for TA quizzes". */
+  quiz_source: string | null;
   created_at: string;
   updated_at: string;
   subject: ExamSubject;

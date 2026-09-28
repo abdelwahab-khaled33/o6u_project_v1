@@ -5,11 +5,15 @@ import { Spinner } from './components/ui/Spinner';
 import { useAuth } from './hooks/useAuth';
 import ChangePasswordPage from './pages/ChangePasswordPage';
 import LoginPage from './pages/LoginPage';
-import { RolePlaceholderPage } from './pages/RolePlaceholderPage';
 import DoctorLayout from './pages/doctor/DoctorLayout';
 import { DoctorQuestionBankPage } from './pages/doctor/DoctorQuestionBankPage';
 import { DoctorExamsPage } from './pages/doctor/DoctorExamsPage';
 import { ExamWizard } from './pages/doctor/ExamWizard';
+import TaLayout from './pages/ta/TaLayout';
+import { TaQuestionBankPage } from './pages/ta/TaQuestionBankPage';
+import { TaQuizzesPage } from './pages/ta/TaQuizzesPage';
+import { TaQuizWizard } from './pages/ta/TaQuizWizard';
+import { StudentExamsPage } from './pages/student/StudentExamsPage';
 import AdminLayout from './pages/admin/AdminLayout';
 import { AdminExamsPage } from './pages/admin/AdminExamsPage';
 import { AdminImportPage } from './pages/admin/AdminImportPage';
@@ -40,6 +44,11 @@ function NotFoundPage() {
 function ExamWizardRoute() {
   const { examId } = useParams();
   return <ExamWizard examId={examId} />;
+}
+
+function TaQuizWizardRoute() {
+  const { quizId } = useParams();
+  return <TaQuizWizard quizId={quizId} />;
 }
 
 export default function App() {
@@ -74,8 +83,18 @@ export default function App() {
               <Route path="exams/:examId/edit" element={<ExamWizardRoute />} />
             </Route>
           </Route>
-          <Route element={<RequireRole roles={['ta']} />}><Route path="/ta" element={<RolePlaceholderPage title="TA home" />} /></Route>
-          <Route element={<RequireRole roles={['student']} />}><Route path="/student" element={<RolePlaceholderPage title="Student home" />} /></Route>
+          <Route element={<RequireRole roles={['ta']} />}>
+            <Route path="/ta" element={<TaLayout />}>
+              <Route index element={<Navigate to="quizzes" replace />} />
+              <Route path="question-bank" element={<TaQuestionBankPage />} />
+              <Route path="quizzes" element={<TaQuizzesPage />} />
+              <Route path="quizzes/new" element={<TaQuizWizard />} />
+              <Route path="quizzes/:quizId/edit" element={<TaQuizWizardRoute />} />
+            </Route>
+          </Route>
+          <Route element={<RequireRole roles={['student']} />}>
+            <Route path="/student" element={<StudentExamsPage />} />
+          </Route>
         </Route>
       </Route>
       <Route path="*" element={<NotFoundPage />} />

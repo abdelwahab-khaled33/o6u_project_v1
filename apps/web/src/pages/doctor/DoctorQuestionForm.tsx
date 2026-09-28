@@ -21,6 +21,13 @@ export type BankQuestion = {
   image_url: string | null;
   owner_type: string;
   created_at: string;
+  /** Server-computed, from the same canEditQuestion that guards PATCH and DELETE. The client must not
+   *  re-derive either of these by comparing author.id with the signed-in user. */
+  author: { id: string; full_name: string } | null;
+  can_edit: boolean;
+  /** Whether the caller personally added this question. Drives the TA quiz's own_questions pool, which
+   *  exams.ts enforces server-side. */
+  is_mine: boolean;
 };
 
 export const TYPE_LABELS: Record<QuestionType, string> = {
