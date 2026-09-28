@@ -1,4 +1,4 @@
-import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
+import { Navigate, Outlet, Route, Routes, useParams } from 'react-router-dom';
 import type { Role } from '@exam/shared';
 import Layout from './components/Layout';
 import { Spinner } from './components/ui/Spinner';
@@ -8,6 +8,8 @@ import LoginPage from './pages/LoginPage';
 import { RolePlaceholderPage } from './pages/RolePlaceholderPage';
 import DoctorLayout from './pages/doctor/DoctorLayout';
 import { DoctorQuestionBankPage } from './pages/doctor/DoctorQuestionBankPage';
+import { DoctorExamsPage } from './pages/doctor/DoctorExamsPage';
+import { ExamWizard } from './pages/doctor/ExamWizard';
 import AdminLayout from './pages/admin/AdminLayout';
 import { AdminExamsPage } from './pages/admin/AdminExamsPage';
 import { AdminImportPage } from './pages/admin/AdminImportPage';
@@ -35,6 +37,11 @@ function NotFoundPage() {
   return <main className="not-found"><h1>Page not found</h1><p>The address does not match a page in Exam Platform.</p></main>;
 }
 
+function ExamWizardRoute() {
+  const { examId } = useParams();
+  return <ExamWizard examId={examId} />;
+}
+
 export default function App() {
   const { user, loading } = useAuth();
   if (loading) return <div className="app-loading"><Spinner label="Loading application" />Loading…</div>;
@@ -60,8 +67,11 @@ export default function App() {
           </Route>
           <Route element={<RequireRole roles={['doctor']} />}>
             <Route path="/doctor" element={<DoctorLayout />}>
-              <Route index element={<Navigate to="question-bank" replace />} />
+              <Route index element={<Navigate to="exams" replace />} />
               <Route path="question-bank" element={<DoctorQuestionBankPage />} />
+              <Route path="exams" element={<DoctorExamsPage />} />
+              <Route path="exams/new" element={<ExamWizard />} />
+              <Route path="exams/:examId/edit" element={<ExamWizardRoute />} />
             </Route>
           </Route>
           <Route element={<RequireRole roles={['ta']} />}><Route path="/ta" element={<RolePlaceholderPage title="TA home" />} /></Route>
