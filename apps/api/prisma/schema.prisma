@@ -1,0 +1,381 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  admin
+  doctor
+  ta
+  student
+}
+
+enum QuestionOwnerType {
+  doctor
+  ta_shared
+}
+
+enum QuestionType {
+  mcq
+  true_false
+}
+
+enum Difficulty {
+  easy
+  medium
+  hard
+}
+
+enum ExamType {
+  doctor_exam
+  ta_quiz
+}
+
+enum ExamStatus {
+  draft
+  pending_approval
+  approved
+  rejected
+  locked
+  closed
+}
+
+enum TargetScope {
+  subject
+  sections
+  student_list
+}
+
+enum QuizSource {
+  shared_bank
+  own_questions
+}
+
+enum StudentExamStatus {
+  not_started
+  in_progress
+  submitted
+  auto_submitted
+}
+
+enum ImportType {
+  users
+  questions
+}
+
+enum GradeAdjustmentType {
+  full_credit
+  set_points
+}
+
+// ---------------------------------------------------------------------------
+// 7.1 Identity & Structure
+// ---------------------------------------------------------------------------
+
+model User {
+  id                  String   @id @default(uuid()) @db.Uuid
+  username            String   @unique
+  password_hash       String
+  full_name           String
+  student_code        String?  @unique
+  role                Role
+  can_change_password Boolean  @default(true)
+  is_active           Boolean  @default(true)
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  doctor_subjects      DoctorAssignment[]
+  sections_ta          Section[]                @relation("SectionTA")
+  enrollments          Enrollment[]
+  section_memberships  SectionMembership[]
+  questions_owner      Question[]               @relation("QuestionOwner")
+  questions_added_ta   Question[]               @relation("QuestionAddedByTA")
+  exams_created        Exam[]                   @relation("ExamCreator")
+  exams_owned          Exam[]                   @relation("ExamOwner")
+  exams_approved       Exam[]                   @relation("ExamApprover")
+  permission_overrides UserPermissionOverride[]
+  student_exams        StudentExam[]            @relation("StudentExams")
+  released_student_exams StudentExam[]           @relation("StudentExamReleasedBy")
+  excel_imports        ExcelImportLog[]
+  grade_adjustments    GradeAdjustment[]
+  exam_target_students ExamTargetStudent[]
+}
+
+model Subject {
+  id         String   @id @default(uuid()) @db.Uuid
+  code       String   @unique
+  name       String
+  created_at DateTime @default(now())
+
+  enrollments        Enrollment[]
+  doctor_assignments DoctorAssignment[]
+  sections           Section[]
+  questions          Question[]
+  exams              Exam[]
+}
+
+model Enrollment {
+  student_id String @db.Uuid
+  subject_id String @db.Uuid
+
+  student User    @relation(fields: [student_id], references: [id])
+  subject Subject @relation(fields: [subject_id], references: [id])
+
+  @@id([student_id, subject_id])
+}
+
+model DoctorAssignment {
+  doctor_id  String @db.Uuid
+  subject_id String @db.Uuid
+
+  doctor  User    @relation(fields: [doctor_id], references: [id])
+  subject Subject @relation(fields: [subject_id], references: [id])
+
+  @@id([doctor_id, subject_id])
+}
+
+model Section {
+  id         String   @id @default(uuid()) @db.Uuid
+  subject_id String   @db.Uuid
+  ta_id      String   @db.Uuid
+  name       String
+  created_at DateTime @default(now())
+
+  subject      Subject             @relation(fields: [subject_id], references: [id])
+  ta           User                @relation("SectionTA", fields: [ta_id], references: [id])
+  memberships  SectionMembership[]
+  exam_targets ExamTargetSection[]
+
+  @@unique([subject_id, ta_id, name])
+}
+
+model SectionMembership {
+  student_id String @db.Uuid
+  section_id String @db.Uuid
+
+  student User    @relation(fields: [student_id], references: [id])
+  section Section @relation(fields: [section_id], references: [id])
+
+  @@id([student_id, section_id])
+}
+
+// ---------------------------------------------------------------------------
+// 7.2 Question Banks
+// ---------------------------------------------------------------------------
+
+model Question {
+  id             String            @id @default(uuid()) @db.Uuid
+  subject_id     String            @db.Uuid
+  owner_type     QuestionOwnerType
+  doctor_id      String?           @db.Uuid
+  added_by_ta_id String?           @db.Uuid
+  question_type  QuestionType
+  text           String
+  options        Json
+  correct_answer String
+  grade          Decimal           @db.Decimal(6, 2)
+  difficulty     Difficulty
+  image_url      String?
+  is_archived    Boolean           @default(false)
+  created_at     DateTime          @default(now())
+  updated_at     DateTime          @updatedAt
+
+  subject           Subject               @relation(fields: [subject_id], references: [id])
+  owner             User?                 @relation("QuestionOwner", fields: [doctor_id], references: [id])
+  added_by_ta       User?                 @relation("QuestionAddedByTA", fields: [added_by_ta_id], references: [id])
+  student_questions StudentExamQuestion[]
+  exam_pools        ExamQuestion[]
+
+  @@index([subject_id, owner_type])
+  @@index([difficulty])
+}
+
+// ---------------------------------------------------------------------------
+// 7.3 Exams
+// ---------------------------------------------------------------------------
+
+model Exam {
+  id                  String      @id @default(uuid()) @db.Uuid
+  subject_id          String      @db.Uuid
+  type                ExamType
+  created_by          String      @db.Uuid
+  owner_id            String      @db.Uuid
+  title               String
+  status              ExamStatus  @default(draft)
+  rejection_reason    String?
+  approved_by         String?     @db.Uuid
+  approved_at         DateTime?
+  access_code_hash    String?
+  access_code_encrypted String?
+  access_code_expires_at DateTime?
+  start_time          DateTime
+  end_time            DateTime
+  duration_minutes    Int
+  difficulty_mix      Json
+  points_per_question Decimal     @db.Decimal(6, 2)
+  target_scope        TargetScope @default(subject)
+  quiz_source         QuizSource?
+  created_at          DateTime    @default(now())
+  updated_at          DateTime    @updatedAt
+
+  subject           Subject             @relation(fields: [subject_id], references: [id])
+  created_by_user   User                @relation("ExamCreator", fields: [created_by], references: [id])
+  owner             User                @relation("ExamOwner", fields: [owner_id], references: [id])
+  approved_by_user  User?               @relation("ExamApprover", fields: [approved_by], references: [id])
+  pool_questions    ExamQuestion[]
+  target_sections   ExamTargetSection[]
+  target_students   ExamTargetStudent[]
+  student_exams     StudentExam[]
+}
+
+model ExamQuestion {
+  exam_id     String @db.Uuid
+  question_id String @db.Uuid
+
+  exam     Exam     @relation(fields: [exam_id], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [question_id], references: [id])
+
+  @@id([exam_id, question_id])
+}
+
+model ExamTargetSection {
+  exam_id    String @db.Uuid
+  section_id String @db.Uuid
+
+  exam    Exam    @relation(fields: [exam_id], references: [id], onDelete: Cascade)
+  section Section @relation(fields: [section_id], references: [id])
+
+  @@id([exam_id, section_id])
+}
+
+model ExamTargetStudent {
+  exam_id    String @db.Uuid
+  student_id String @db.Uuid
+
+  exam    Exam @relation(fields: [exam_id], references: [id], onDelete: Cascade)
+  student User @relation(fields: [student_id], references: [id], onDelete: Cascade)
+
+  @@id([exam_id, student_id])
+}
+
+model StudentExam {
+  id                String            @id @default(uuid()) @db.Uuid
+  exam_id           String            @db.Uuid
+  student_id        String            @db.Uuid
+  status            StudentExamStatus @default(not_started)
+  started_at        DateTime?
+  deadline_at       DateTime?
+  submitted_at      DateTime?
+  total_grade       Decimal?          @db.Decimal(6, 2)
+  last_heartbeat_at DateTime?
+  session_ip        String?           @db.VarChar(45)
+  session_token     String?           @db.VarChar(128)
+  session_released_by String?         @db.Uuid
+  session_released_at DateTime?
+  wrong_access_code_attempts Int      @default(0)
+  access_code_attempt_window_started_at DateTime?
+  created_at        DateTime          @default(now())
+  updated_at        DateTime          @updatedAt
+
+  exam      Exam                  @relation(fields: [exam_id], references: [id], onDelete: Cascade)
+  student   User                  @relation("StudentExams", fields: [student_id], references: [id], onDelete: Cascade)
+  released_by User?               @relation("StudentExamReleasedBy", fields: [session_released_by], references: [id], onDelete: SetNull)
+  questions StudentExamQuestion[]
+
+  @@unique([exam_id, student_id])
+  @@index([status])
+}
+
+model StudentExamQuestion {
+  id                       String       @id @default(uuid()) @db.Uuid
+  student_exam_id          String       @db.Uuid
+  question_id              String       @db.Uuid
+  question_type            QuestionType
+  text                     String
+  options                  Json
+  correct_answer           String
+  difficulty               Difficulty
+  image_url                String?
+  selected_answer          String?
+  is_flagged               Boolean      @default(false)
+  order                    Int
+  grade_awarded            Decimal?     @db.Decimal(6, 2)
+  credit_adjustment_reason String?
+
+  student_exam       StudentExam       @relation(fields: [student_exam_id], references: [id], onDelete: Cascade)
+  question           Question          @relation(fields: [question_id], references: [id])
+  grade_adjustments  GradeAdjustment[]
+
+  @@unique([student_exam_id, question_id])
+  @@index([student_exam_id, order])
+}
+
+// ---------------------------------------------------------------------------
+// 7.4 Access Control
+// ---------------------------------------------------------------------------
+
+model Permission {
+  id             String   @id @default(uuid()) @db.Uuid
+  role           Role
+  permission_key String
+  allowed        Boolean  @default(true)
+  created_at     DateTime @default(now())
+
+  @@unique([role, permission_key])
+}
+
+model UserPermissionOverride {
+  id             String   @id @default(uuid()) @db.Uuid
+  user_id        String   @db.Uuid
+  permission_key String
+  allowed        Boolean  @default(true)
+  created_at     DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, permission_key])
+}
+
+// ---------------------------------------------------------------------------
+// Grade adjustments (FR-18) — every override is attributable
+// ---------------------------------------------------------------------------
+
+model GradeAdjustment {
+  id                       String               @id @default(uuid()) @db.Uuid
+  student_exam_question_id String               @db.Uuid
+  actor_id                 String               @db.Uuid
+  adjustment_type          GradeAdjustmentType
+  reason                   String
+  previous_points          Decimal              @db.Decimal(6, 2)
+  new_points               Decimal              @db.Decimal(6, 2)
+  created_at               DateTime             @default(now())
+
+  student_exam_question StudentExamQuestion @relation(fields: [student_exam_question_id], references: [id])
+  actor                 User                 @relation(fields: [actor_id], references: [id])
+}
+
+// ---------------------------------------------------------------------------
+// 7.5 Import Auditing
+// ---------------------------------------------------------------------------
+
+model ExcelImportLog {
+  id             String     @id @default(uuid()) @db.Uuid
+  import_type    ImportType
+  uploaded_by    String     @db.Uuid
+  filename       String
+  total_rows     Int
+  imported_count Int
+  error_count    Int
+  error_report   Json?
+  created_at     DateTime   @default(now())
+
+  uploader User @relation(fields: [uploaded_by], references: [id])
+}

@@ -1,0 +1,25 @@
+{
+  "name": "exam-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "University Exam & Quiz Platform — monorepo",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces --if-present",
+    "dev:api": "npm run dev --workspace @exam/api",
+    "dev:web": "npm run dev --workspace @exam/web",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "overrides": {
+    "deepmerge-ts": "8.0.2",
+    "uuid": "^11.1.1"
+  }
+}
