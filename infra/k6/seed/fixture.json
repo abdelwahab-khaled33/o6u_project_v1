@@ -1,0 +1,12 @@
+{
+    "apiBase":  "http://localhost:4001/api/v1",
+    "examId":  "0e23dc8b-e634-4cc7-b777-6aa50b3d345b",
+    "accessCode":  "SZ6EAE",
+    "password":  "LoadTest!2026",
+    "studentCount":  3200,
+    "studentPrefix":  "lt_stu_",
+    "mix":  2,
+    "createdAt":  "2026-09-29T14:43:13.3924511+03:00",
+    "attempts":  3200,
+    "snapshots":  19200
+}

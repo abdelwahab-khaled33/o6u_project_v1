@@ -27,3 +27,10 @@ Thumbs.db
 # Excel uploads (never persisted)
 uploads/
 tmp/
+
+# Archived k6 load-test run artefacts.
+# Every number the runbook depends on is transcribed into infra/k6/results/README.md, so the
+# raw output is regenerable with run.ps1 / run-cluster.ps1 and does not belong in history.
+# README.md is exempted on purpose: it IS the record, and a blanket ignore would drop it.
+infra/k6/results/**
+!infra/k6/results/README.md
