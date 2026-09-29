@@ -2,11 +2,13 @@ import type { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import type { Role } from '@exam/shared';
 
+export const NIL_UUID = '00000000-0000-0000-0000-000000000000';
+
 export function buildScopedSubjectWhere(role: Role, userId: string): Prisma.SubjectWhereInput {
   if (role === 'admin') return {};
   if (role === 'doctor') return { doctor_assignments: { some: { doctor_id: userId } } };
   if (role === 'ta') return { sections: { some: { ta_id: userId } } };
-  return { id: '00000000-0000-0000-0000-000000000000' };
+  return { id: NIL_UUID };
 }
 
 export function buildScopedSectionWhere(
@@ -20,7 +22,34 @@ export function buildScopedSectionWhere(
     return { ...base, subject: { doctor_assignments: { some: { doctor_id: userId } } } };
   }
   if (role === 'ta') return { ...base, ta_id: userId };
-  return { ...base, id: '00000000-0000-0000-0000-000000000000' };
+  return { ...base, id: NIL_UUID };
+}
+
+/**
+ * The subject id a staff member is allowed to read a roster for, or the nil UUID when
+ * they are not.
+ *
+ * The two roster routes used to disagree: /subjects/:id/sections narrowed a doctor to
+ * their assigned subjects, while /subjects/:id/students narrowed only a TA, so a doctor
+ * with zero doctor_assignments got an empty section list and the full name, student code
+ * and section of every enrolled student. A correct sibling is evidence the pattern is
+ * known, not that it was applied, so both routes now ask this one function.
+ *
+ * A gate rather than a where-filter, because a User row cannot be filtered by the
+ * caller's own doctor assignment: DoctorAssignment hangs off the doctor's User, not off
+ * the student's. Failing closed with the nil UUID matches the idiom already used in
+ * buildScopedSubjectWhere and buildScopedSectionWhere, and answering 200 with [] rather
+ * than 403 keeps the two siblings byte-identical instead of inventing a second shape.
+ */
+export async function visibleRosterSubjectId(
+  role: Role,
+  userId: string,
+  subjectId: string,
+): Promise<string> {
+  if (role === 'admin') return subjectId;
+  if (role === 'doctor') return (await isDoctorOfSubject(userId, subjectId)) ? subjectId : NIL_UUID;
+  if (role === 'ta') return (await taTeachesSection(userId, subjectId)) ? subjectId : NIL_UUID;
+  return NIL_UUID;
 }
 
 export async function canManageBank(

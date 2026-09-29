@@ -10,6 +10,7 @@ import {
   ROLES,
 } from '@exam/shared';
 import { prisma } from '../lib/prisma.js';
+import { requireUuidParam } from '../lib/uuid-param.js';
 import { requireAuth, requirePermission, requireRoles } from '../middleware/auth.js';
 import { resolvePermission } from '../services/permissions.js';
 import {
@@ -30,6 +31,7 @@ import {
   getUserPermissionRows,
   isPermissionKey,
   isRole,
+  lastActiveAdminError,
   resolvePaging,
   selfLockoutError,
   userSelect,
@@ -185,7 +187,11 @@ const resetPasswordSchema = z.object({
   new_password: z.string().min(8).max(72),
 });
 
-adminRouter.post('/users/:id/reset-password', requirePermission('users.manage'), async (req, res, next) => {
+adminRouter.post(
+  '/users/:id/reset-password',
+  requirePermission('users.manage'),
+  requireUuidParam('id', 'User not found'),
+  async (req, res, next) => {
   try {
     const parsed = resetPasswordSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -215,7 +221,11 @@ const patchUserSchema = z.object({
   can_change_password: z.boolean().optional(),
 });
 
-adminRouter.patch('/users/:id', requirePermission('users.manage'), async (req, res, next) => {
+adminRouter.patch(
+  '/users/:id',
+  requirePermission('users.manage'),
+  requireUuidParam('id', 'User not found'),
+  async (req, res, next) => {
   try {
     const parsed = patchUserSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -224,10 +234,32 @@ adminRouter.patch('/users/:id', requirePermission('users.manage'), async (req, r
 
     const existing = await prisma.user.findUnique({
       where: { id: req.params.id },
-      select: { id: true, role: true },
+      select: { id: true, role: true, is_active: true },
     });
     if (!existing) {
       return res.status(404).json({ error: 'User not found' });
+    }
+
+    // `role` and `is_active` are the two fields that decide whether anyone can still reach
+    // an admin route. Removing the last active admin is refused whatever else the request
+    // carries, because unlike a lost permission there is no screen that can re-grant it.
+    // Short-circuited on a non-admin target so the extra count never runs for one.
+    if (
+      existing.role === 'admin' &&
+      (parsed.data.role != null || parsed.data.is_active != null)
+    ) {
+      const activeAdminCount = await prisma.user.count({
+        where: { role: 'admin', is_active: true },
+      });
+      const lockout = lastActiveAdminError({
+        target: existing,
+        nextRole: parsed.data.role,
+        nextIsActive: parsed.data.is_active,
+        activeAdminCount,
+      });
+      if (lockout) {
+        return res.status(400).json({ error: lockout });
+      }
     }
 
     const effectiveRole = parsed.data.role ?? existing.role;
@@ -283,7 +315,11 @@ adminRouter.post('/subjects', requirePermission('subjects.manage'), async (req, 
   }
 });
 
-adminRouter.patch('/subjects/:id', requirePermission('subjects.manage'), async (req, res, next) => {
+adminRouter.patch(
+  '/subjects/:id',
+  requirePermission('subjects.manage'),
+  requireUuidParam('id', 'Subject not found'),
+  async (req, res, next) => {
   try {
     const parsed = subjectSchema.partial().safeParse(req.body);
     if (!parsed.success) {
@@ -299,7 +335,11 @@ adminRouter.patch('/subjects/:id', requirePermission('subjects.manage'), async (
   }
 });
 
-adminRouter.delete('/subjects/:id', requirePermission('subjects.manage'), async (req, res, next) => {
+adminRouter.delete(
+  '/subjects/:id',
+  requirePermission('subjects.manage'),
+  requireUuidParam('id', 'Subject not found'),
+  async (req, res, next) => {
   try {
     const subject = await prisma.subject.findUnique({ where: { id: req.params.id }, select: { id: true } });
     if (!subject) {
@@ -380,7 +420,11 @@ adminRouter.post('/sections', requirePermission('subjects.manage'), async (req, 
   }
 });
 
-adminRouter.patch('/sections/:id', requirePermission('subjects.manage'), async (req, res, next) => {
+adminRouter.patch(
+  '/sections/:id',
+  requirePermission('subjects.manage'),
+  requireUuidParam('id', 'Section not found'),
+  async (req, res, next) => {
   try {
     const parsed = patchSectionSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -418,7 +462,11 @@ adminRouter.patch('/sections/:id', requirePermission('subjects.manage'), async (
   }
 });
 
-adminRouter.delete('/sections/:id', requirePermission('subjects.manage'), async (req, res, next) => {
+adminRouter.delete(
+  '/sections/:id',
+  requirePermission('subjects.manage'),
+  requireUuidParam('id', 'Section not found'),
+  async (req, res, next) => {
   try {
     const section = await prisma.section.findUnique({ where: { id: req.params.id }, select: { id: true } });
     if (!section) {
@@ -448,10 +496,13 @@ adminRouter.delete('/sections/:id', requirePermission('subjects.manage'), async 
 // Enrollments
 // ---------------------------------------------------------------------------
 
+// .uuid(), not .min(1): these three go straight into a where clause inside the
+// transaction, and Prisma throws P2023 on a non-uuid, which the error handler turns into
+// a 500. A body field of the wrong shape is a bad request, so 400 is the right answer.
 const enrollmentSchema = z.object({
-  student_id: z.string().min(1),
-  subject_id: z.string().min(1),
-  section_id: z.string().min(1),
+  student_id: z.string().uuid(),
+  subject_id: z.string().uuid(),
+  section_id: z.string().uuid(),
 });
 
 adminRouter.put('/enrollments', requirePermission('subjects.manage'), async (req, res, next) => {
@@ -510,13 +561,19 @@ adminRouter.put('/enrollments', requirePermission('subjects.manage'), async (req
 // ---------------------------------------------------------------------------
 
 const doctorAssignmentSchema = z.object({
-  doctor_id: z.string().min(1),
+  // .uuid() for the same reason as enrollmentSchema above: a non-uuid here reaches a
+  // where clause inside the transaction and becomes a 500.
+  doctor_id: z.string().uuid(),
   // Required, not optional: omitting it must be a 400 rather than "leave unchanged",
   // and an explicit empty array is how a doctor is cleared of every subject.
-  subject_ids: z.array(z.string().min(1)),
+  subject_ids: z.array(z.string().uuid()),
 });
 
-adminRouter.get('/doctor-assignments/:doctorId', requirePermission('subjects.manage'), async (req, res, next) => {
+adminRouter.get(
+  '/doctor-assignments/:doctorId',
+  requirePermission('subjects.manage'),
+  requireUuidParam('doctorId', 'Doctor not found'),
+  async (req, res, next) => {
   try {
     const doctor = await prisma.user.findUnique({
       where: { id: req.params.doctorId },
@@ -667,7 +724,11 @@ adminRouter.patch('/permissions/defaults', requirePermission('permissions.manage
   }
 });
 
-adminRouter.get('/permissions/users/:id', requirePermission('permissions.manage'), async (req, res, next) => {
+adminRouter.get(
+  '/permissions/users/:id',
+  requirePermission('permissions.manage'),
+  requireUuidParam('id', 'User not found'),
+  async (req, res, next) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.params.id },
@@ -689,7 +750,11 @@ const patchUserPermissionSchema = z.object({
   allowed: z.boolean().nullable(),
 });
 
-adminRouter.patch('/permissions/users/:id', requirePermission('permissions.manage'), async (req, res, next) => {
+adminRouter.patch(
+  '/permissions/users/:id',
+  requirePermission('permissions.manage'),
+  requireUuidParam('id', 'User not found'),
+  async (req, res, next) => {
   try {
     const parsed = patchUserPermissionSchema.safeParse(req.body);
     if (!parsed.success) {

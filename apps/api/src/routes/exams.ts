@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
+import { requireUuidParam } from '../lib/uuid-param.js';
 import { requireAuth, requirePermission, requireRoles } from '../middleware/auth.js';
 import { isDoctorOfSubject, taTeachesSection } from '../services/subject-access.js';
 import { checkPoolSufficiency, generateStudentExamsForExam } from '../services/exam-sampling.js';
@@ -275,7 +276,7 @@ examsRouter.post('/', requireRoles('doctor', 'ta'), async (req, res, next) => {
 });
 
 const examListQuerySchema = z.object({
-  subject_id: z.string().min(1).optional(),
+  subject_id: z.string().uuid().optional(),
   status: z.enum(['draft', 'pending_approval', 'approved', 'rejected', 'locked', 'closed']).optional(),
 });
 
@@ -301,7 +302,7 @@ examsRouter.get('/', requireRoles('admin', 'doctor', 'ta'), async (req, res, nex
   }
 });
 
-examsRouter.get('/:id', async (req, res, next) => {
+examsRouter.get('/:id', requireUuidParam('id', 'Exam not found'), async (req, res, next) => {
   try {
     const exam = await prisma.exam.findUnique({
       where: { id: req.params.id },
@@ -327,7 +328,11 @@ examsRouter.get('/:id', async (req, res, next) => {
   }
 });
 
-examsRouter.get('/:id/access-code', requireRoles('admin', 'doctor', 'ta'), async (req, res, next) => {
+examsRouter.get(
+  '/:id/access-code',
+  requireRoles('admin', 'doctor', 'ta'),
+  requireUuidParam('id', 'Exam not found'),
+  async (req, res, next) => {
   try {
     const exam = await prisma.exam.findUnique({
       where: { id: req.params.id as string },
@@ -359,7 +364,11 @@ examsRouter.get('/:id/access-code', requireRoles('admin', 'doctor', 'ta'), async
   }
 });
 
-examsRouter.get('/:examId/live', requireRoles('admin', 'doctor', 'ta'), async (req, res, next) => {
+examsRouter.get(
+  '/:examId/live',
+  requireRoles('admin', 'doctor', 'ta'),
+  requireUuidParam('examId', 'Exam not found'),
+  async (req, res, next) => {
   try {
     const exam = await prisma.exam.findUnique({
       where: { id: req.params.examId as string },
@@ -428,7 +437,11 @@ examsRouter.get('/:examId/live', requireRoles('admin', 'doctor', 'ta'), async (r
   }
 });
 
-examsRouter.patch('/:id', requireRoles('admin', 'doctor', 'ta'), async (req, res, next) => {
+examsRouter.patch(
+  '/:id',
+  requireRoles('admin', 'doctor', 'ta'),
+  requireUuidParam('id', 'Exam not found'),
+  async (req, res, next) => {
   try {
     const existing = await prisma.exam.findUnique({ where: { id: req.params.id as string } });
     if (!existing) return res.status(404).json({ error: 'Exam not found' });
@@ -570,7 +583,11 @@ examsRouter.patch('/:id', requireRoles('admin', 'doctor', 'ta'), async (req, res
   }
 });
 
-examsRouter.delete('/:id', requireRoles('admin', 'doctor', 'ta'), async (req, res, next) => {
+examsRouter.delete(
+  '/:id',
+  requireRoles('admin', 'doctor', 'ta'),
+  requireUuidParam('id', 'Exam not found'),
+  async (req, res, next) => {
   try {
     const existing = await prisma.exam.findUnique({ where: { id: req.params.id as string } });
     if (!existing) return res.status(404).json({ error: 'Exam not found' });
@@ -601,6 +618,10 @@ examsRouter.post(
   '/:examId/attempts/:studentExamId/release',
   requireRoles('admin', 'doctor', 'ta'),
   requirePermission('sessions.release'),
+  // The exam is authorized first and the attempt second, so the two guards sit in that
+  // order: a well-formed exam id is expected to reach the database, a malformed one is not.
+  requireUuidParam('examId', 'Exam not found'),
+  requireUuidParam('studentExamId', 'Exam attempt not found'),
   async (req, res, next) => {
     try {
       const exam = await prisma.exam.findUnique({

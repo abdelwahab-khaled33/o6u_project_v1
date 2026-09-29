@@ -30,7 +30,18 @@ export function createApp() {
 
   app.use(
     '/uploads',
-    express.static(path.resolve(process.cwd(), 'uploads')),
+    express.static(path.resolve(process.cwd(), 'uploads'), {
+      // Question images are read by students during an exam with no token, so the mount
+      // itself is the last place a stored file can be neutralised. Only the four sniffed
+      // image types may render, none of them may execute or embed, and nothing may be
+      // treated as anything other than its own extension.
+      setHeaders: (res) => {
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
+        res.setHeader('Content-Disposition', 'inline');
+        res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
+      },
+    }),
   );
 
   app.use('/api/v1/health', healthRouter);
@@ -44,6 +55,14 @@ export function createApp() {
   app.use('/api/v1/student/exams', studentExamsRouter);
   app.use('/api/v1/results', resultsRouter);
   app.use('/api/v1/grade-adjustments', gradeAdjustmentsRouter);
+
+  // Express's built-in 404 is an HTML page that embeds the requested path. Every other
+  // response on this API is JSON, so a client that assumes JSON gets a parse error, and
+  // the body reflects attacker-controlled text into whatever renders it. Placed after the
+  // routers, so a real route still runs and a protected one still 401s.
+  app.use((_req, res) => {
+    res.status(404).json({ error: 'Not found' });
+  });
 
   app.use(
     (

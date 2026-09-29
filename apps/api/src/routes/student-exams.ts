@@ -2,6 +2,7 @@ import { Router } from 'express';
 import type { Request } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
+import { requireUuidParam } from '../lib/uuid-param.js';
 import { requireAuth, requirePermission, requireRoles } from '../middleware/auth.js';
 import { requireSeb } from '../middleware/seb.js';
 import { requireLabNetwork, clientIp } from '../middleware/lab-network.js';
@@ -144,7 +145,11 @@ const startExamSchema = z.object({
   access_code: z.string().trim().length(6),
 });
 
-studentExamsRouter.post('/:examId/start', requireSeb, async (req, res, next) => {
+studentExamsRouter.post(
+  '/:examId/start',
+  requireUuidParam('examId', 'Exam not found'),
+  requireSeb,
+  async (req, res, next) => {
   try {
     const studentId = req.auth!.userId;
     const examId = req.params.examId as string;
@@ -275,7 +280,11 @@ const answerSchema = z.object({
   selected_answer: z.string().trim().min(1),
 });
 
-studentExamsRouter.patch('/:examId/answer', requireSeb, async (req, res, next) => {
+studentExamsRouter.patch(
+  '/:examId/answer',
+  requireUuidParam('examId', 'Exam not found'),
+  requireSeb,
+  async (req, res, next) => {
   try {
     const parsed = answerSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: 'Invalid answer payload' });
@@ -325,7 +334,11 @@ const flagSchema = z.object({
   is_flagged: z.boolean(),
 });
 
-studentExamsRouter.patch('/:examId/flag', requireSeb, async (req, res, next) => {
+studentExamsRouter.patch(
+  '/:examId/flag',
+  requireUuidParam('examId', 'Exam not found'),
+  requireSeb,
+  async (req, res, next) => {
   try {
     const parsed = flagSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: 'Invalid flag payload' });
@@ -364,7 +377,11 @@ studentExamsRouter.patch('/:examId/flag', requireSeb, async (req, res, next) => 
   }
 });
 
-studentExamsRouter.post('/:examId/heartbeat', requireSeb, async (req, res, next) => {
+studentExamsRouter.post(
+  '/:examId/heartbeat',
+  requireUuidParam('examId', 'Exam not found'),
+  requireSeb,
+  async (req, res, next) => {
   try {
     const studentExam = await loadActiveStudentExam(req.params.examId as string, req.auth!.userId);
     if (!studentExam) return res.status(404).json({ error: 'Exam attempt not found' });
@@ -392,7 +409,11 @@ studentExamsRouter.post('/:examId/heartbeat', requireSeb, async (req, res, next)
   }
 });
 
-studentExamsRouter.post('/:examId/submit', requireSeb, async (req, res, next) => {
+studentExamsRouter.post(
+  '/:examId/submit',
+  requireUuidParam('examId', 'Exam not found'),
+  requireSeb,
+  async (req, res, next) => {
   try {
     const studentExam = await loadActiveStudentExam(req.params.examId as string, req.auth!.userId);
     if (!studentExam) return res.status(404).json({ error: 'Exam attempt not found' });

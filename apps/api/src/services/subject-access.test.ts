@@ -9,9 +9,13 @@ const { prisma } = vi.hoisted(() => ({
 
 vi.mock('../lib/prisma.js', () => ({ prisma }));
 
-import { buildScopedSectionWhere, buildScopedSubjectWhere, canManageBank } from './subject-access.js';
-
-const NIL_UUID = '00000000-0000-0000-0000-000000000000';
+import {
+  NIL_UUID,
+  buildScopedSectionWhere,
+  buildScopedSubjectWhere,
+  canManageBank,
+  visibleRosterSubjectId,
+} from './subject-access.js';
 
 describe('buildScopedSubjectWhere', () => {
   it('lets an admin see every subject', () => {
@@ -139,5 +143,57 @@ describe('buildScopedSectionWhere', () => {
       where: { ta_id: 'ta-1', subject_id: 'subject-1' },
     });
     expect(buildScopedSectionWhere('ta', 'ta-1', 'subject-1')).toMatchObject({ ta_id: 'ta-1' });
+  });
+});
+
+describe('visibleRosterSubjectId', () => {
+  beforeEach(() => {
+    prisma.doctorAssignment.count.mockReset().mockResolvedValue(0);
+    prisma.section.count.mockReset().mockResolvedValue(0);
+  });
+
+  it('gives an admin the real subject without asking the database', async () => {
+    await expect(visibleRosterSubjectId('admin', 'admin-1', 'subject-1')).resolves.toBe('subject-1');
+    expect(prisma.doctorAssignment.count).not.toHaveBeenCalled();
+    expect(prisma.section.count).not.toHaveBeenCalled();
+  });
+
+  it('gives a doctor their assigned subject', async () => {
+    prisma.doctorAssignment.count.mockResolvedValue(1);
+
+    await expect(visibleRosterSubjectId('doctor', 'doctor-1', 'subject-1')).resolves.toBe('subject-1');
+    expect(prisma.doctorAssignment.count).toHaveBeenCalledWith({
+      where: { doctor_id: 'doctor-1', subject_id: 'subject-1' },
+    });
+  });
+
+  it('fails a doctor with no assignment closed, which is the leak this closes', async () => {
+    prisma.doctorAssignment.count.mockResolvedValue(0);
+
+    await expect(visibleRosterSubjectId('doctor', 'doctor-1', 'subject-1')).resolves.toBe(NIL_UUID);
+  });
+
+  it('gives a TA the subject where they teach, and only that one', async () => {
+    prisma.section.count.mockResolvedValue(1);
+    await expect(visibleRosterSubjectId('ta', 'ta-1', 'subject-1')).resolves.toBe('subject-1');
+
+    prisma.section.count.mockResolvedValue(0);
+    await expect(visibleRosterSubjectId('ta', 'ta-1', 'subject-2')).resolves.toBe(NIL_UUID);
+  });
+
+  it('fails closed for a student rather than relying on the role guard', async () => {
+    await expect(visibleRosterSubjectId('student', 'student-1', 'subject-1')).resolves.toBe(NIL_UUID);
+    expect(prisma.doctorAssignment.count).not.toHaveBeenCalled();
+    expect(prisma.section.count).not.toHaveBeenCalled();
+  });
+
+  it('uses the predicates canManageBank already counts, so read and write scope cannot drift', async () => {
+    prisma.doctorAssignment.count.mockResolvedValue(1);
+    await expect(canManageBank('doctor-1', 'doctor', 'subject-1')).resolves.toBe(true);
+    await expect(visibleRosterSubjectId('doctor', 'doctor-1', 'subject-1')).resolves.toBe('subject-1');
+
+    prisma.doctorAssignment.count.mockReset().mockResolvedValue(0);
+    await expect(canManageBank('doctor-1', 'doctor', 'subject-1')).resolves.toBe(false);
+    await expect(visibleRosterSubjectId('doctor', 'doctor-1', 'subject-1')).resolves.toBe(NIL_UUID);
   });
 });

@@ -1,15 +1,31 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type * as subjectAccessModule from '../services/subject-access.js';
 
-const { prisma, authRef } = vi.hoisted(() => ({
+const { prisma, authRef, gateRef } = vi.hoisted(() => ({
   authRef: { current: null as { userId: string; role: string } | null },
+  // Defaults to "the caller may see the requested subject"; each test overrides it.
+  gateRef: { current: null as null | string },
   prisma: {
     subject: { findUnique: vi.fn(), count: vi.fn() },
     section: { findMany: vi.fn() },
     user: { findMany: vi.fn() },
+    doctorAssignment: { count: vi.fn() },
   },
 }));
 
 vi.mock('../lib/prisma.js', () => ({ prisma }));
+
+vi.mock('../services/subject-access.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof subjectAccessModule>();
+  return {
+    ...actual,
+    // The gate is unit-tested against real predicates in subject-access.test.ts. Here it
+    // is stubbed per test so the route wiring can be observed: which subject id each of
+    // the two siblings actually queries with.
+    visibleRosterSubjectId: (_role: string, _userId: string, subjectId: string) =>
+      Promise.resolve(gateRef.current ?? subjectId),
+  };
+});
 
 vi.mock('../middleware/auth.js', () => ({
   requireAuth: (req: { auth?: unknown }, _res: unknown, next: () => void) => {
@@ -34,7 +50,8 @@ app.use('/subjects', subjectsRouter);
 
 const TA = 'ta-1';
 const DOCTOR = 'doc-1';
-const SUBJECT = 'sub-1';
+const SUBJECT = '11111111-1111-4111-8111-111111111111';
+const NIL = '00000000-0000-0000-0000-000000000000';
 
 const sectionArgs = () => prisma.section.findMany.mock.calls.at(-1)![0] as { where: Record<string, unknown> };
 const studentArgs = () => prisma.user.findMany.mock.calls.at(-1)![0] as { where: Record<string, unknown>; select: Record<string, unknown> };
@@ -44,6 +61,7 @@ beforeEach(() => {
   prisma.section.findMany.mockReset().mockResolvedValue([]);
   prisma.user.findMany.mockReset().mockResolvedValue([]);
   authRef.current = { userId: TA, role: 'ta' };
+  gateRef.current = null;
 });
 
 describe('GET /subjects/:id/sections', () => {
@@ -129,6 +147,40 @@ describe('GET /subjects/:id/students', () => {
     await request(app).get(`/subjects/${SUBJECT}/students`);
 
     expect(studentArgs().where).not.toHaveProperty('section_memberships');
+  });
+
+  it("narrows a doctor's roster to subjects they are assigned to", async () => {
+    // Without this a doctor with zero doctor_assignments reads the full name, student
+    // code and section of every enrolled student in every subject in the university.
+    authRef.current = { userId: DOCTOR, role: 'doctor' };
+    gateRef.current = NIL; // visibleRosterSubjectId() with no assignment
+
+    const res = await request(app).get(`/subjects/${SUBJECT}/students`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ students: [] });
+    expect(studentArgs().where).toMatchObject({ enrollments: { some: { subject_id: NIL } } });
+  });
+
+  it('passes the same gated subject to both sibling routes, so they cannot disagree again', async () => {
+    // The bug this pins: /sections narrowed a doctor and /students did not, so the same
+    // caller was refused one and served the other. Both must query the gated id.
+    authRef.current = { userId: DOCTOR, role: 'doctor' };
+    gateRef.current = NIL;
+
+    await request(app).get(`/subjects/${SUBJECT}/sections`);
+    await request(app).get(`/subjects/${SUBJECT}/students`);
+
+    expect(sectionArgs().where).toMatchObject({ subject_id: NIL });
+    expect(studentArgs().where).toMatchObject({ enrollments: { some: { subject_id: NIL } } });
+  });
+
+  it('lets an admin read the roster of any subject', async () => {
+    authRef.current = { userId: 'admin-1', role: 'admin' };
+
+    await request(app).get(`/subjects/${SUBJECT}/students`);
+
+    expect(studentArgs().where).toMatchObject({ enrollments: { some: { subject_id: SUBJECT } } });
   });
 
   it('reports a null section for a student with no membership in this subject', async () => {

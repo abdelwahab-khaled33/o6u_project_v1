@@ -7,13 +7,69 @@ import { isDoctorOfSubject } from '../services/subject-access.js';
 import { applyGradeCompensation } from '../services/grade-adjustment.js';
 import { ADJUSTMENT_TYPES } from '@exam/shared';
 
+/**
+ * GradeAdjustment.new_points / previous_points and StudentExamQuestion.grade_awarded are
+ * `Decimal(6,2)` in the schema, so anything above 9999.99 cannot be stored at all and
+ * anything with a third decimal place is silently rounded. A bound in Zod is not a
+ * nicety here: without it the first case reached Prisma and answered 500, and the
+ * second wrote an audit row disagreeing with the points the actor actually asked for.
+ *
+ * This is only the storage ceiling. Whether an examiner may award more than the exam's
+ * own points_per_question is a policy question the spec does not settle, so it is
+ * deliberately not enforced here.
+ */
+const MAX_ADJUSTMENT_POINTS = 9999.99;
+
 const CompensateExamSchema = z.object({
   source_question_id: z.string().uuid(),
   adjustment_type: z.enum(ADJUSTMENT_TYPES),
-  points: z.number().nonnegative().optional(),
+  points: z
+    .number()
+    .nonnegative()
+    .max(MAX_ADJUSTMENT_POINTS, `points must not exceed ${MAX_ADJUSTMENT_POINTS}`)
+    .refine((n) => Number.isInteger(n * 100), {
+      message: 'points must have at most 2 decimal places',
+    })
+    .optional(),
   student_exam_ids: z.array(z.string().uuid()).optional(),
   reason: z.string().trim().min(3, 'Reason for grade adjustment is required'),
 });
+
+/** The shape both routes need before they may decide anything about the exam. */
+type AdjustmentExam = {
+  id: string;
+  type: string;
+  owner_id: string;
+  subject_id: string;
+  status?: string;
+};
+
+/**
+ * Authorization, not validation. Returns a rejection to send back, or null to proceed.
+ *
+ * Both routes call this before looking at the exam's status, and it is shared so the two
+ * cannot drift: the POST route used to run its 409 "only approved exams" gate first,
+ * which told any doctor who guessed an exam id whether that exam existed and what state
+ * it was in, while the GET sibling on the same exam answered 403.
+ */
+async function authorizeExamAccess(
+  exam: AdjustmentExam,
+  role: string,
+  userId: string,
+): Promise<{ status: number; error: string } | null> {
+  if (role !== 'doctor') return null;
+
+  if (exam.type === 'doctor_exam') {
+    if (exam.owner_id !== userId) return { status: 403, error: 'You do not own this exam' };
+    return null;
+  }
+  if (exam.type === 'ta_quiz') {
+    const owns = await isDoctorOfSubject(userId, exam.subject_id);
+    if (!owns) return { status: 403, error: 'You are not the doctor of this subject' };
+    return null;
+  }
+  return { status: 403, error: 'Forbidden' };
+}
 
 export const gradeAdjustmentsRouter = Router();
 gradeAdjustmentsRouter.use(requireAuth);
@@ -44,26 +100,17 @@ gradeAdjustmentsRouter.post(
         select: { id: true, type: true, owner_id: true, subject_id: true, status: true },
       });
       if (!exam) return res.status(404).json({ error: 'Exam not found' });
-      if (exam.status !== 'approved') {
-        return res.status(409).json({ error: 'Only approved exams can receive grade adjustments' });
-      }
 
       const role = req.auth!.role;
       const userId = req.auth!.userId;
 
-      if (role === 'doctor') {
-        if (exam.type === 'doctor_exam') {
-          if (exam.owner_id !== userId) {
-            return res.status(403).json({ error: 'You do not own this exam' });
-          }
-        } else if (exam.type === 'ta_quiz') {
-          const owns = await isDoctorOfSubject(userId, exam.subject_id);
-          if (!owns) {
-            return res.status(403).json({ error: 'You are not the doctor of this subject' });
-          }
-        } else {
-          return res.status(403).json({ error: 'Forbidden' });
-        }
+      // Authorization first, then state. A doctor with no claim on this exam must not
+      // learn from the answer whether it exists or what stage it is at.
+      const denied = await authorizeExamAccess(exam, role, userId);
+      if (denied) return res.status(denied.status).json({ error: denied.error });
+
+      if (exam.status !== 'approved') {
+        return res.status(409).json({ error: 'Only approved exams can receive grade adjustments' });
       }
 
       const result = await applyGradeCompensation({
@@ -99,23 +146,8 @@ gradeAdjustmentsRouter.get(
       });
       if (!exam) return res.status(404).json({ error: 'Exam not found' });
 
-      const role = req.auth!.role;
-      const userId = req.auth!.userId;
-
-      if (role === 'doctor') {
-        if (exam.type === 'doctor_exam') {
-          if (exam.owner_id !== userId) {
-            return res.status(403).json({ error: 'You do not own this exam' });
-          }
-        } else if (exam.type === 'ta_quiz') {
-          const owns = await isDoctorOfSubject(userId, exam.subject_id);
-          if (!owns) {
-            return res.status(403).json({ error: 'You are not the doctor of this subject' });
-          }
-        } else {
-          return res.status(403).json({ error: 'Forbidden' });
-        }
-      }
+      const denied = await authorizeExamAccess(exam, req.auth!.role, req.auth!.userId);
+      if (denied) return res.status(denied.status).json({ error: denied.error });
 
       const adjustments = await prisma.gradeAdjustment.findMany({
         where: {

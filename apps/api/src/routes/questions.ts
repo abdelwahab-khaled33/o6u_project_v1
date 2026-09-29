@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import crypto from 'node:crypto';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
+import { isUuid, requireUuidParam } from '../lib/uuid-param.js';
 import { requireAuth, requirePermission } from '../middleware/auth.js';
 import { canManageBank, buildScopedSubjectWhere } from '../services/subject-access.js';
 import {
@@ -12,6 +13,7 @@ import {
   commitQuestionImport,
 } from '../services/questions-import.js';
 import { buildQuestionBankWorkbook } from '../services/questions-export.js';
+import { sniffImage } from '../services/image-sniff.js';
 
 const uploadDir = path.resolve(process.cwd(), 'uploads', 'images');
 fs.mkdirSync(uploadDir, { recursive: true });
@@ -68,6 +70,31 @@ export function normalizeQuestionAnswer(input: {
 }
 
 /**
+ * The only image reference a stored question may carry.
+ *
+ * image_url is rendered as <img src> on the student runner, so it is stored in a column
+ * and then handed to every student who sits the exam. Accepting any string here would
+ * let one author point the whole cohort at a third-party host, a `javascript:` URL, or a
+ * path outside the upload directory. The upload route answers with exactly
+ * /uploads/images/<uuid>.<sniffed ext> and nothing else can produce such a value, so the
+ * check is an allowlist of that shape rather than a blocklist of known-bad ones.
+ */
+const UPLOADED_IMAGE_PATH = /^\/uploads\/images\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(png|jpg|jpeg|gif|webp)$/;
+
+export function normalizeImageUrl(
+  value: string | null | undefined,
+): { ok: true; image_url: string | null } | { ok: false; error: string } {
+  if (value == null || value === '') return { ok: true, image_url: null };
+  if (UPLOADED_IMAGE_PATH.test(value)) return { ok: true, image_url: value };
+  return {
+    ok: false,
+    error:
+      'image_url must be a path returned by the image upload endpoint ' +
+      '(/uploads/images/<id>.<png|jpg|jpeg|gif|webp>)',
+  };
+}
+
+/**
  * The single ownership authority for a question. A doctor owns their private bank;
  * a TA owns only what they personally added to the shared subject bank.
  *
@@ -94,6 +121,13 @@ questionBankRouter.get('/', async (req, res, next) => {
   try {
     const subjectId = req.query.subject_id as string | undefined;
     const { userId, role } = req.auth!;
+
+    // Checked before the manage gate, which is itself a query, and before findMany. A
+    // malformed id is answered 404 like an unknown one, so the pair stays
+    // indistinguishable to a caller guessing subject ids.
+    if (subjectId !== undefined && !isUuid(subjectId)) {
+      return res.status(404).json({ error: 'Subject not found' });
+    }
 
     // Same gate the create, import and export routes already use, so asking for a
     // subject by id cannot read a bank the caller may not manage.
@@ -169,8 +203,13 @@ questionBankRouter.get('/', async (req, res, next) => {
 questionBankRouter.get('/export', requirePermission('question_bank.export'), async (req, res, next) => {
   try {
     const query: unknown = req.query;
-    const parsed = z.object({ subject_id: z.string().min(1) }).safeParse(query);
-    if (!parsed.success) return res.status(400).json({ error: 'subject_id is required' });
+    const parsed = z.object({ subject_id: z.string().uuid() }).safeParse(query);
+    // A malformed id is not "missing", so it does not get the missing-parameter message.
+    if (!parsed.success) {
+      const given = (req.query as { subject_id?: unknown }).subject_id;
+      if (given === undefined) return res.status(400).json({ error: 'subject_id is required' });
+      return res.status(404).json({ error: 'Subject not found' });
+    }
     const subjectId = parsed.data.subject_id;
     const subject = await prisma.subject.findUnique({
       where: { id: subjectId },
@@ -209,6 +248,11 @@ questionBankRouter.post('/', async (req, res, next) => {
       return res.status(400).json({ error: answer.error });
     }
 
+    const image = normalizeImageUrl(rest.image_url);
+    if (!image.ok) {
+      return res.status(400).json({ error: image.error });
+    }
+
     const ok = await canManageBank(req.auth!.userId, req.auth!.role, subject_id);
     if (!ok) {
       return res.status(403).json({ error: 'You do not manage this subject' });
@@ -227,7 +271,7 @@ questionBankRouter.post('/', async (req, res, next) => {
         correct_answer: answer.correct_answer,
         grade: rest.grade,
         difficulty: rest.difficulty,
-        image_url: rest.image_url ?? null,
+        image_url: image.image_url,
       },
       select: { id: true, text: true, question_type: true, difficulty: true },
     });
@@ -244,7 +288,10 @@ questionBankRouter.post('/', async (req, res, next) => {
 
 const patchQuestionSchema = questionSchema.partial().omit({ subject_id: true });
 
-questionBankRouter.patch('/:id', async (req, res, next) => {
+questionBankRouter.patch(
+  '/:id',
+  requireUuidParam('id', 'Question not found'),
+  async (req, res, next) => {
   try {
     const existing = await prisma.question.findUnique({ where: { id: req.params.id } });
     if (!existing) return res.status(404).json({ error: 'Question not found' });
@@ -284,6 +331,17 @@ questionBankRouter.patch('/:id', async (req, res, next) => {
       if (correct_answer) data.correct_answer = answer.correct_answer;
     }
 
+    // Same allowlist as create. Only a patch that actually carries image_url is checked,
+    // so a text-only edit to a question whose image was set by an older version still
+    // goes through rather than being blocked on a field the author is not touching.
+    if (parsed.data.image_url !== undefined) {
+      const image = normalizeImageUrl(parsed.data.image_url);
+      if (!image.ok) {
+        return res.status(400).json({ error: image.error });
+      }
+      data.image_url = image.image_url;
+    }
+
     const question = await prisma.question.update({
       where: { id: existing.id },
       data,
@@ -295,7 +353,10 @@ questionBankRouter.patch('/:id', async (req, res, next) => {
   }
 });
 
-questionBankRouter.delete('/:id', async (req, res, next) => {
+questionBankRouter.delete(
+  '/:id',
+  requireUuidParam('id', 'Question not found'),
+  async (req, res, next) => {
   try {
     const existing = await prisma.question.findUnique({ where: { id: req.params.id } });
     if (!existing) return res.status(404).json({ error: 'Question not found' });
@@ -361,13 +422,16 @@ questionBankRouter.post('/images', upload.single('image'), (req, res, next) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'image file is required' });
 
-    const allowed = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
-    if (!allowed.has(req.file.mimetype)) {
+    // The bytes decide, never the client's declared type or filename. uploads/images is
+    // served by an unauthenticated express.static mount, so a stored .html would be
+    // text/html on the API origin and a stored .svg would execute script when navigated
+    // to -- stored XSS reachable with no token.
+    const sniffed = sniffImage(req.file.buffer);
+    if (!sniffed) {
       return res.status(400).json({ error: 'Only PNG/JPEG/WEBP/GIF images are allowed' });
     }
 
-    const ext = path.extname(req.file.originalname).toLowerCase() || '.img';
-    const name = `${crypto.randomUUID()}${ext}`;
+    const name = `${crypto.randomUUID()}${sniffed.extension}`;
     fs.writeFileSync(path.join(uploadDir, name), req.file.buffer);
 
     res.status(201).json({ imageUrl: `/uploads/images/${name}` });

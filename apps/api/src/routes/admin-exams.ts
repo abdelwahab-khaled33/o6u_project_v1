@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
+import { requireUuidParam } from '../lib/uuid-param.js';
 import { requireAuth, requirePermission, requireRoles } from '../middleware/auth.js';
 import { checkPoolSufficiency, generateStudentExamsForExam } from '../services/exam-sampling.js';
 import { autoSubmitExpiredExams } from '../services/exam-grading.js';
@@ -39,7 +40,11 @@ adminExamsRouter.get('/exams', requirePermission('exams.approve'), async (req, r
   }
 });
 
-adminExamsRouter.post('/exams/:id/approve', requirePermission('exams.approve'), async (req, res, next) => {
+adminExamsRouter.post(
+  '/exams/:id/approve',
+  requirePermission('exams.approve'),
+  requireUuidParam('id', 'Exam not found'),
+  async (req, res, next) => {
   try {
     const exam = await prisma.exam.findUnique({
       where: { id: req.params.id },
@@ -95,7 +100,11 @@ const regenerateAccessCodeSchema = z.object({
   access_code_expires_at: z.string().datetime().optional(),
 });
 
-adminExamsRouter.post('/exams/:id/access-code/regenerate', requirePermission('exams.access_code.regenerate'), async (req, res, next) => {
+adminExamsRouter.post(
+  '/exams/:id/access-code/regenerate',
+  requirePermission('exams.access_code.regenerate'),
+  requireUuidParam('id', 'Exam not found'),
+  async (req, res, next) => {
   try {
     const parsed = regenerateAccessCodeSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: 'Invalid access-code payload' });
@@ -130,7 +139,11 @@ const rejectSchema = z.object({
   reason: z.string().trim().min(3, 'A rejection reason is required'),
 });
 
-adminExamsRouter.post('/exams/:id/reject', requirePermission('exams.approve'), async (req, res, next) => {
+adminExamsRouter.post(
+  '/exams/:id/reject',
+  requirePermission('exams.approve'),
+  requireUuidParam('id', 'Exam not found'),
+  async (req, res, next) => {
   try {
     const parsed = rejectSchema.safeParse(req.body);
     if (!parsed.success) {

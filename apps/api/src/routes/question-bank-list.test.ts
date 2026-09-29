@@ -31,6 +31,12 @@ const TA_ME = 'ta-me';
 const TA_OTHER = 'ta-other';
 const DOCTOR = 'doc-1';
 
+// A subject the caller does not manage. It has to be a well-formed uuid: the route now
+// rejects a malformed `subject_id` with 404 before it ever reaches the authorization
+// gate, so a literal like "someone-elses-subject" would 404 and the 403 below would
+// never be exercised — a test that passes for the wrong reason.
+const ELSEWHERE = '22222222-2222-4222-8222-222222222222';
+
 type ListArgs = { where: Record<string, unknown>; select: Record<string, unknown> };
 
 const lastCall = (): ListArgs => prisma.question.findMany.mock.calls.at(-1)![0] as ListArgs;
@@ -84,7 +90,7 @@ describe('GET /question-bank — author attribution', () => {
     // so no client could ever name an author and the export was the odd one out.
     prisma.question.findMany.mockResolvedValue([]);
 
-    await request(app).get('/question-bank?subject_id=sub-1');
+    await request(app).get('/question-bank?subject_id=11111111-1111-4111-8111-111111111111');
 
     const { select } = lastCall();
     expect(select).toHaveProperty('owner');
@@ -102,7 +108,7 @@ describe('GET /question-bank — author attribution', () => {
   it('names the TA who added a shared question', async () => {
     prisma.question.findMany.mockResolvedValue([sharedRow()]);
 
-    const res = await request(app).get('/question-bank?subject_id=sub-1');
+    const res = await request(app).get('/question-bank?subject_id=11111111-1111-4111-8111-111111111111');
 
     expect(res.status).toBe(200);
     expect(res.body.questions).toHaveLength(1);
@@ -114,7 +120,7 @@ describe('GET /question-bank — author attribution', () => {
       sharedRow({ id: 'q-ta-2', added_by_ta_id: TA_OTHER, added_by_ta: { id: TA_OTHER, full_name: 'Omar Halim' } }),
     ]);
 
-    const res = await request(app).get('/question-bank?subject_id=sub-1');
+    const res = await request(app).get('/question-bank?subject_id=11111111-1111-4111-8111-111111111111');
 
     expect(res.body.questions[0].author).toEqual({ id: TA_OTHER, full_name: 'Omar Halim' });
   });
@@ -123,7 +129,7 @@ describe('GET /question-bank — author attribution', () => {
     authRef.current = { userId: DOCTOR, role: 'doctor' };
     prisma.question.findMany.mockResolvedValue([doctorRow()]);
 
-    const res = await request(app).get('/question-bank?subject_id=sub-1');
+    const res = await request(app).get('/question-bank?subject_id=11111111-1111-4111-8111-111111111111');
 
     expect(res.body.questions[0].author).toEqual({ id: DOCTOR, full_name: 'Dr. Hana Mahmoud' });
   });
@@ -131,7 +137,7 @@ describe('GET /question-bank — author attribution', () => {
   it('reports author as null rather than guessing when no relation resolves', async () => {
     prisma.question.findMany.mockResolvedValue([sharedRow({ added_by_ta: null })]);
 
-    const res = await request(app).get('/question-bank?subject_id=sub-1');
+    const res = await request(app).get('/question-bank?subject_id=11111111-1111-4111-8111-111111111111');
 
     expect(res.body.questions[0].author).toBeNull();
   });
@@ -141,7 +147,7 @@ describe('GET /question-bank — can_edit is decided by the server', () => {
   it('lets a TA edit their own shared question', async () => {
     prisma.question.findMany.mockResolvedValue([sharedRow()]);
 
-    const res = await request(app).get('/question-bank?subject_id=sub-1');
+    const res = await request(app).get('/question-bank?subject_id=11111111-1111-4111-8111-111111111111');
 
     expect(res.body.questions[0].can_edit).toBe(true);
   });
@@ -153,7 +159,7 @@ describe('GET /question-bank — can_edit is decided by the server', () => {
       sharedRow({ id: 'q-ta-2', added_by_ta_id: TA_OTHER, added_by_ta: { id: TA_OTHER, full_name: 'Omar Halim' } }),
     ]);
 
-    const res = await request(app).get('/question-bank?subject_id=sub-1');
+    const res = await request(app).get('/question-bank?subject_id=11111111-1111-4111-8111-111111111111');
 
     expect(res.body.questions[0].can_edit).toBe(false);
   });
@@ -162,7 +168,7 @@ describe('GET /question-bank — can_edit is decided by the server', () => {
     authRef.current = { userId: DOCTOR, role: 'doctor' };
     prisma.question.findMany.mockResolvedValue([doctorRow()]);
 
-    const res = await request(app).get('/question-bank?subject_id=sub-1');
+    const res = await request(app).get('/question-bank?subject_id=11111111-1111-4111-8111-111111111111');
 
     expect(res.body.questions[0].can_edit).toBe(true);
   });
@@ -171,7 +177,7 @@ describe('GET /question-bank — can_edit is decided by the server', () => {
     authRef.current = { userId: 'doc-2', role: 'doctor' };
     prisma.question.findMany.mockResolvedValue([doctorRow()]);
 
-    const res = await request(app).get('/question-bank?subject_id=sub-1');
+    const res = await request(app).get('/question-bank?subject_id=11111111-1111-4111-8111-111111111111');
 
     expect(res.body.questions[0].can_edit).toBe(false);
   });
@@ -184,7 +190,7 @@ describe('GET /question-bank — one authoritative signal, not two to compare', 
     // needs them, but shipping them would invite a client to re-derive ownership.
     prisma.question.findMany.mockResolvedValue([sharedRow()]);
 
-    const res = await request(app).get('/question-bank?subject_id=sub-1');
+    const res = await request(app).get('/question-bank?subject_id=11111111-1111-4111-8111-111111111111');
 
     const row = res.body.questions[0] as Record<string, unknown>;
     expect(row).not.toHaveProperty('doctor_id');
@@ -200,7 +206,7 @@ describe('GET /question-bank — is_mine, so the own_questions pool needs no cli
   it('marks the shared question a TA added themselves', async () => {
     prisma.question.findMany.mockResolvedValue([sharedRow()]);
 
-    const res = await request(app).get('/question-bank?subject_id=sub-1');
+    const res = await request(app).get('/question-bank?subject_id=11111111-1111-4111-8111-111111111111');
 
     expect(res.body.questions[0].is_mine).toBe(true);
   });
@@ -210,7 +216,7 @@ describe('GET /question-bank — is_mine, so the own_questions pool needs no cli
       sharedRow({ id: 'q-ta-2', added_by_ta_id: TA_OTHER, added_by_ta: { id: TA_OTHER, full_name: 'Omar Halim' } }),
     ]);
 
-    const res = await request(app).get('/question-bank?subject_id=sub-1');
+    const res = await request(app).get('/question-bank?subject_id=11111111-1111-4111-8111-111111111111');
 
     expect(res.body.questions[0].is_mine).toBe(false);
   });
@@ -219,7 +225,7 @@ describe('GET /question-bank — is_mine, so the own_questions pool needs no cli
     // A null added_by_ta_id must not read as "mine" through a loose comparison.
     prisma.question.findMany.mockResolvedValue([sharedRow({ added_by_ta_id: null, added_by_ta: null })]);
 
-    const res = await request(app).get('/question-bank?subject_id=sub-1');
+    const res = await request(app).get('/question-bank?subject_id=11111111-1111-4111-8111-111111111111');
 
     expect(res.body.questions[0].is_mine).toBe(false);
   });
@@ -228,7 +234,7 @@ describe('GET /question-bank — is_mine, so the own_questions pool needs no cli
     authRef.current = { userId: DOCTOR, role: 'doctor' };
     prisma.question.findMany.mockResolvedValue([doctorRow()]);
 
-    const res = await request(app).get('/question-bank?subject_id=sub-1');
+    const res = await request(app).get('/question-bank?subject_id=11111111-1111-4111-8111-111111111111');
 
     expect(res.body.questions[0].is_mine).toBe(true);
   });
@@ -237,7 +243,7 @@ describe('GET /question-bank — is_mine, so the own_questions pool needs no cli
     authRef.current = { userId: 'doc-2', role: 'doctor' };
     prisma.question.findMany.mockResolvedValue([doctorRow()]);
 
-    const res = await request(app).get('/question-bank?subject_id=sub-1');
+    const res = await request(app).get('/question-bank?subject_id=11111111-1111-4111-8111-111111111111');
 
     expect(res.body.questions[0].is_mine).toBe(false);
   });
@@ -247,7 +253,7 @@ describe('GET /question-bank — a TA cannot read a subject they do not teach', 
   it('refuses a subject the TA has no section in, and queries nothing', async () => {
     prisma.section.count.mockResolvedValue(0);
 
-    const res = await request(app).get('/question-bank?subject_id=someone-elses-subject');
+    const res = await request(app).get(`/question-bank?subject_id=${ELSEWHERE}`);
 
     expect(res.status).toBe(403);
     expect(res.body).toEqual({ error: 'You do not manage this subject' });
@@ -258,7 +264,7 @@ describe('GET /question-bank — a TA cannot read a subject they do not teach', 
     authRef.current = { userId: DOCTOR, role: 'doctor' };
     prisma.doctorAssignment.count.mockResolvedValue(0);
 
-    const res = await request(app).get('/question-bank?subject_id=someone-elses-subject');
+    const res = await request(app).get(`/question-bank?subject_id=${ELSEWHERE}`);
 
     expect(res.status).toBe(403);
     expect(prisma.question.findMany).not.toHaveBeenCalled();
@@ -270,7 +276,7 @@ describe('GET /question-bank — a TA cannot read a subject they do not teach', 
     authRef.current = { userId: 'admin-1', role: 'admin' };
     prisma.question.findMany.mockResolvedValue([sharedRow()]);
 
-    const res = await request(app).get('/question-bank?subject_id=sub-1');
+    const res = await request(app).get('/question-bank?subject_id=11111111-1111-4111-8111-111111111111');
 
     expect(res.status).toBe(403);
     expect(res.body).toEqual({ error: 'You do not manage this subject' });
@@ -309,10 +315,10 @@ describe('GET /question-bank — existing scoping is unchanged', () => {
   it("scopes a TA to the whole shared bank, with no author filter", async () => {
     prisma.question.findMany.mockResolvedValue([]);
 
-    await request(app).get('/question-bank?subject_id=sub-1');
+    await request(app).get('/question-bank?subject_id=11111111-1111-4111-8111-111111111111');
 
     expect(lastCall().where).toEqual({
-      subject_id: 'sub-1',
+      subject_id: '11111111-1111-4111-8111-111111111111',
       owner_type: 'ta_shared',
       is_archived: false,
       subject: { sections: { some: { ta_id: TA_ME } } },
@@ -323,10 +329,10 @@ describe('GET /question-bank — existing scoping is unchanged', () => {
     authRef.current = { userId: DOCTOR, role: 'doctor' };
     prisma.question.findMany.mockResolvedValue([]);
 
-    await request(app).get('/question-bank?subject_id=sub-1');
+    await request(app).get('/question-bank?subject_id=11111111-1111-4111-8111-111111111111');
 
     expect(lastCall().where).toEqual({
-      subject_id: 'sub-1',
+      subject_id: '11111111-1111-4111-8111-111111111111',
       owner_type: 'doctor',
       doctor_id: DOCTOR,
       is_archived: false,

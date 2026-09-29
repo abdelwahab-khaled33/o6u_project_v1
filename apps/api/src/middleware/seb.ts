@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import type { Request, Response, NextFunction } from 'express';
 import { env } from '../config/env.js';
 import { prisma } from '../lib/prisma.js';
+import { safeEquals } from '../lib/timing-safe.js';
 
 function computeRequestUrl(req: Request): string {
   const host = req.get('host') ?? '';
@@ -11,7 +12,9 @@ function computeRequestUrl(req: Request): string {
 function hashMatches(url: string, header: string): boolean {
   return env.sebKeys.some((key) => {
     const expected = crypto.createHash('sha256').update(url + key).digest('hex');
-    return expected === header;
+    // Constant time: `===` returns on the first differing hex character, so the response
+    // time would leak how much of a guessed digest was right.
+    return safeEquals(expected, header);
   });
 }
 

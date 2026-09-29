@@ -200,6 +200,40 @@ export function selfLockoutError(input: SelfLockoutInput): string | null {
   return effectiveAfter ? null : SELF_LOCKOUT_ERROR;
 }
 
+export const LAST_ADMIN_ERROR =
+  'This is the last active administrator. Promote or activate another admin before ' +
+  'deactivating or changing the role of this one.';
+
+export interface LastAdminInput {
+  target: { id: string; role: Role; is_active: boolean };
+  nextRole?: Role;
+  nextIsActive?: boolean;
+  activeAdminCount: number;
+}
+
+/**
+ * The user-edit equivalent of selfLockoutError.
+ *
+ * `role` and `is_active` decide whether anyone can reach an admin route at all, so they
+ * are the fields that can lock the platform out of its own recovery path. The permissions
+ * screen is the way back from a lost permission; there is no screen that can re-grant
+ * `admin`, because reaching one already requires being one.
+ *
+ * The guard is about the resulting state, not about who made the change: deactivating or
+ * demoting the last active admin is refused whoever asks, including the actor themselves.
+ */
+export function lastActiveAdminError(input: LastAdminInput): string | null {
+  const { target, activeAdminCount } = input;
+  if (target.role !== 'admin') return null;
+  if (activeAdminCount > 1) return null;
+
+  const nextRole = input.nextRole ?? target.role;
+  const nextIsActive = input.nextIsActive ?? target.is_active;
+
+  const remainsAdmin = nextRole === 'admin' && nextIsActive;
+  return remainsAdmin ? null : LAST_ADMIN_ERROR;
+}
+
 export async function getSectionDependents(sectionId: string) {
   const [memberships, exam_targets] = await Promise.all([
     prisma.sectionMembership.count({ where: { section_id: sectionId } }),

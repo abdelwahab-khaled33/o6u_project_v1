@@ -28,6 +28,18 @@ function toPublicUser(u: {
   };
 }
 
+/**
+ * A valid bcrypt hash to compare against when no account matched.
+ *
+ * bcrypt.compare is by far the most expensive thing this handler does. Returning before
+ * it for an unknown username answers in ~3ms instead of ~100ms, which turns the login
+ * endpoint into a free username oracle: enumerate the student roll, then spend the
+ * cracking effort only on the accounts that exist. Comparing against this decoy makes the
+ * unknown-username path cost the same as a real one. The hash is of a value nobody knows,
+ * and its result is discarded.
+ */
+const DECOY_PASSWORD_HASH = bcrypt.hashSync('no-such-account-decoy', 10);
+
 authRouter.post('/login', async (req, res, next) => {
   try {
     const parsed = loginSchema.safeParse(req.body);
@@ -39,12 +51,12 @@ authRouter.post('/login', async (req, res, next) => {
       where: { username: parsed.data.username },
     });
 
-    if (!user || !user.is_active) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
+    const ok = await bcrypt.compare(
+      parsed.data.password,
+      user?.password_hash ?? DECOY_PASSWORD_HASH,
+    );
 
-    const ok = await bcrypt.compare(parsed.data.password, user.password_hash);
-    if (!ok) {
+    if (!user || !user.is_active || !ok) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
