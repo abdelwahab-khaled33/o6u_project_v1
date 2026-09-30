@@ -229,6 +229,9 @@ export function TaQuizzesPage() {
                           <Button variant="secondary" onClick={() => { void toggleLive(exam.id); }}>
                             {liveFor === exam.id ? 'Hide progress' : 'Progress'}
                           </Button>
+                          <Button variant="secondary" onClick={() => navigate(`/ta/quizzes/${exam.id}/results`)}>
+                            Results
+                          </Button>
                           {confirmDelete === exam.id ? (
                             <>
                               <span className="muted">Delete this quiz?</span>

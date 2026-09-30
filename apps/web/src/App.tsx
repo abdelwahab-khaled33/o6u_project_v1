@@ -14,6 +14,11 @@ import { TaQuestionBankPage } from './pages/ta/TaQuestionBankPage';
 import { TaQuizzesPage } from './pages/ta/TaQuizzesPage';
 import { TaQuizWizard } from './pages/ta/TaQuizWizard';
 import { StudentExamsPage } from './pages/student/StudentExamsPage';
+import { ExamResultsPage } from './pages/results/ExamResultsPage';
+import { SubjectResultsPage } from './pages/results/SubjectResultsPage';
+import { ExamCompensationPage } from './pages/compensation/ExamCompensationPage';
+import { ExamAccessCodePage } from './pages/monitoring/ExamAccessCodePage';
+import { ExamLivePage } from './pages/monitoring/ExamLivePage';
 import AdminLayout from './pages/admin/AdminLayout';
 import { AdminExamsPage } from './pages/admin/AdminExamsPage';
 import { AdminImportPage } from './pages/admin/AdminImportPage';
@@ -70,6 +75,9 @@ export default function App() {
               <Route path="subjects" element={<AdminSubjectsPage />} />
               <Route path="sections" element={<AdminSectionsPage />} />
               <Route path="exams" element={<AdminExamsPage />} />
+              <Route path="results" element={<SubjectResultsPage detailsBase="/admin/results" />} />
+              <Route path="results/:examId" element={<ExamResultsPage />} />
+              <Route path="exams/:examId/compensate" element={<ExamCompensationPage />} />
               <Route path="permissions" element={<AdminPermissionsPage />} />
               <Route path="term-reset" element={<AdminTermResetPage />} />
             </Route>
@@ -79,8 +87,13 @@ export default function App() {
               <Route index element={<Navigate to="exams" replace />} />
               <Route path="question-bank" element={<DoctorQuestionBankPage />} />
               <Route path="exams" element={<DoctorExamsPage />} />
+              <Route path="results" element={<SubjectResultsPage detailsBase="/doctor/results" />} />
+              <Route path="results/:examId" element={<ExamResultsPage />} />
               <Route path="exams/new" element={<ExamWizard />} />
               <Route path="exams/:examId/edit" element={<ExamWizardRoute />} />
+              <Route path="exams/:examId/compensate" element={<ExamCompensationPage />} />
+              <Route path="exams/:examId/access-code" element={<ExamAccessCodePage />} />
+              <Route path="exams/:examId/live" element={<ExamLivePage />} />
             </Route>
           </Route>
           <Route element={<RequireRole roles={['ta']} />}>
@@ -88,6 +101,7 @@ export default function App() {
               <Route index element={<Navigate to="quizzes" replace />} />
               <Route path="question-bank" element={<TaQuestionBankPage />} />
               <Route path="quizzes" element={<TaQuizzesPage />} />
+              <Route path="quizzes/:quizId/results" element={<ExamResultsPage />} />
               <Route path="quizzes/new" element={<TaQuizWizard />} />
               <Route path="quizzes/:quizId/edit" element={<TaQuizWizardRoute />} />
             </Route>

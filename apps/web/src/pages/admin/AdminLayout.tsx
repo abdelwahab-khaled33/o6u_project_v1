@@ -6,6 +6,7 @@ const sections = [
   { to: '/admin/subjects', label: 'Subjects' },
   { to: '/admin/sections', label: 'Sections' },
   { to: '/admin/exams', label: 'Exams' },
+  { to: '/admin/results', label: 'Results' },
   { to: '/admin/permissions', label: 'Permissions' },
   { to: '/admin/term-reset', label: 'Term reset' },
 ];

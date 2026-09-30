@@ -3,6 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 const sections = [
   { to: '/doctor/exams', label: 'Exams' },
   { to: '/doctor/question-bank', label: 'Question bank' },
+  { to: '/doctor/results', label: 'Results' },
 ];
 
 export default function DoctorLayout() {

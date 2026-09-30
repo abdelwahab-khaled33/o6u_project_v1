@@ -165,6 +165,33 @@ export function DoctorExamsPage() {
                         <div className="row-actions">
                           <Button
                             variant="secondary"
+                            onClick={() => navigate(`/doctor/results/${exam.id}`)}
+                          >
+                            Results
+                          </Button>
+                          {/* Reachable while the exam is still running, which results is not (§4.5). */}
+                          <Button
+                            variant="secondary"
+                            onClick={() => navigate(`/doctor/exams/${exam.id}/compensate`)}
+                          >
+                            Compensate
+                          </Button>
+                          {/* Both of these are needed at a time results is not: the code from
+                              approval onward, and the monitor only while the exam runs. */}
+                          <Button
+                            variant="secondary"
+                            onClick={() => navigate(`/doctor/exams/${exam.id}/access-code`)}
+                          >
+                            Access code
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            onClick={() => navigate(`/doctor/exams/${exam.id}/live`)}
+                          >
+                            Monitor
+                          </Button>
+                          <Button
+                            variant="secondary"
                             disabled={!upcoming}
                             title={upcoming
                               ? 'Edit this exam'

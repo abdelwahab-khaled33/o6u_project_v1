@@ -1,5 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect -- this page fetches from the API on mount and whenever a filter changes; the fetched data cannot be derived during render */
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Alert } from '../../components/ui/Alert';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
@@ -32,6 +33,7 @@ const TYPE_OPTIONS: Array<{ value: ExamTypeFilter; label: string }> = [
 ];
 
 export function AdminExamsPage() {
+  const navigate = useNavigate();
   const [exams, setExams] = useState<AdminExam[]>([]);
   const [status, setStatus] = useState('pending_approval');
   const [typeFilter, setTypeFilter] = useState<ExamTypeFilter>('doctor_exam');
@@ -139,6 +141,18 @@ export function AdminExamsPage() {
                   <td>{formatDateTime(exam.start_time)}</td>
                   <td>{formatDateTime(exam.end_time)}</td>
                   <td>
+                    <div className="row-actions">
+                      <Button variant="secondary" onClick={() => navigate(`/admin/results/${exam.id}`)}>
+                        Results
+                      </Button>
+                      {/* Reachable while the exam is still running, which results is not (§4.5). */}
+                      <Button
+                        variant="secondary"
+                        onClick={() => navigate(`/admin/exams/${exam.id}/compensate`)}
+                      >
+                        Compensate
+                      </Button>
+                    </div>
                     {exam.status === 'pending_approval' && (
                       <>
                         <div className="row-actions">
