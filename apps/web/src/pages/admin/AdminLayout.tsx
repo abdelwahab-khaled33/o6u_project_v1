@@ -5,6 +5,7 @@ const sections = [
   { to: '/admin/import', label: 'Excel import' },
   { to: '/admin/subjects', label: 'Subjects' },
   { to: '/admin/sections', label: 'Sections' },
+  { to: '/admin/doctor-assignments', label: 'Doctor assignments' },
   { to: '/admin/exams', label: 'Exams' },
   { to: '/admin/results', label: 'Results' },
   { to: '/admin/permissions', label: 'Permissions' },

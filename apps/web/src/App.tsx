@@ -20,6 +20,7 @@ import { ExamCompensationPage } from './pages/compensation/ExamCompensationPage'
 import { ExamAccessCodePage } from './pages/monitoring/ExamAccessCodePage';
 import { ExamLivePage } from './pages/monitoring/ExamLivePage';
 import AdminLayout from './pages/admin/AdminLayout';
+import { AdminDoctorAssignmentsPage } from './pages/admin/AdminDoctorAssignmentsPage';
 import { AdminExamsPage } from './pages/admin/AdminExamsPage';
 import { AdminImportPage } from './pages/admin/AdminImportPage';
 import { AdminPermissionsPage } from './pages/admin/AdminPermissionsPage';
@@ -74,6 +75,7 @@ export default function App() {
               <Route path="import" element={<AdminImportPage />} />
               <Route path="subjects" element={<AdminSubjectsPage />} />
               <Route path="sections" element={<AdminSectionsPage />} />
+              <Route path="doctor-assignments" element={<AdminDoctorAssignmentsPage />} />
               <Route path="exams" element={<AdminExamsPage />} />
               <Route path="results" element={<SubjectResultsPage detailsBase="/admin/results" />} />
               <Route path="results/:examId" element={<ExamResultsPage />} />
