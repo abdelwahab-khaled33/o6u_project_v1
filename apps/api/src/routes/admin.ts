@@ -19,6 +19,12 @@ import {
   isValidResetConfirmation,
   runTermReset,
 } from '../services/term-reset.js';
+import {
+  PASSWORD_RESET_THROTTLE,
+  checkSingleThrottle,
+  passwordResetKey,
+  recordSingleThrottle,
+} from '../services/login-throttle.js';
 import { dryRunUserImport, commitUserImport } from '../services/users-import.js';
 import {
   PERMISSIONS_MANAGE,
@@ -198,15 +204,38 @@ adminRouter.post(
       return res.status(400).json({ error: 'new_password must be 8-72 characters' });
     }
 
+    // Keyed from the token admin id, so one admin's bulk work never throttles
+    // another's. Every attempt counts and a success does not clear it: the
+    // route has no credential check of its own to fail on, so counting only
+    // failures would let a script reset without bound. Ten an hour allows
+    // manual admin work; bulk provisioning belongs in the Excel import.
+    const resetKey = passwordResetKey(req.auth!.userId);
+    const resetThrottle = await checkSingleThrottle(resetKey, PASSWORD_RESET_THROTTLE);
+    if (resetThrottle.throttled) {
+      res.setHeader('Retry-After', String(resetThrottle.retryAfterSec));
+      return res.status(429).json({ error: 'Too many password resets. Try again later.' });
+    }
+    await recordSingleThrottle(resetKey, PASSWORD_RESET_THROTTLE);
+
     const user = await prisma.user.findUnique({ where: { id: req.params.id }, select: { id: true } });
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { password_hash: await bcrypt.hash(parsed.data.new_password, 10) },
-    });
+    // One transaction, because two independent awaits leave the worst state
+    // reachable: the password is changed but the audit row is not, so a reset
+    // that broke someone's access cannot be traced. The hash is computed before
+    // the transaction opens so bcrypt does not hold a connection while it runs.
+    const passwordHash = await bcrypt.hash(parsed.data.new_password, 10);
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: user.id },
+        data: { password_hash: passwordHash },
+      }),
+      prisma.passwordResetAudit.create({
+        data: { admin_id: req.auth!.userId, target_user_id: user.id },
+      }),
+    ]);
     return res.json({ reset: true });
   } catch (err) {
     next(err);

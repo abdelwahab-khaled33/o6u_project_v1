@@ -2,7 +2,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import bcrypt from 'bcryptjs';
 
 const { prisma } = vi.hoisted(() => ({
-  prisma: { user: { findUnique: vi.fn(), update: vi.fn() } },
+  prisma: {
+    user: { findUnique: vi.fn(), update: vi.fn() },
+    loginThrottle: {
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+      upsert: vi.fn(),
+      update: vi.fn(),
+      deleteMany: vi.fn(),
+    },
+    $transaction: vi.fn(),
+  },
 }));
 
 vi.mock('../lib/prisma.js', () => ({ prisma }));
@@ -23,6 +33,15 @@ const login = (username: string, password: string) =>
 beforeEach(() => {
   prisma.user.findUnique.mockReset();
   prisma.user.update.mockReset();
+  prisma.loginThrottle.findMany.mockReset();
+  prisma.loginThrottle.findUnique.mockReset();
+  prisma.loginThrottle.upsert.mockReset();
+  prisma.loginThrottle.update.mockReset();
+  prisma.loginThrottle.deleteMany.mockReset();
+  prisma.$transaction.mockReset();
+  prisma.$transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
+  prisma.loginThrottle.findMany.mockResolvedValue([]);
+  prisma.loginThrottle.deleteMany.mockResolvedValue({ count: 0 });
 });
 
 describe('POST /login response shape', () => {

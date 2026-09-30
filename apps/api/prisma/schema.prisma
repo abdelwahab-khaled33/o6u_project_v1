@@ -107,6 +107,8 @@ model User {
   excel_imports        ExcelImportLog[]
   grade_adjustments    GradeAdjustment[]
   exam_target_students ExamTargetStudent[]
+  password_resets_performed PasswordResetAudit[] @relation("PasswordResetBy")
+  password_resets_received  PasswordResetAudit[] @relation("PasswordResetTarget")
 }
 
 model Subject {
@@ -378,4 +380,39 @@ model ExcelImportLog {
   created_at     DateTime   @default(now())
 
   uploader User @relation(fields: [uploaded_by], references: [id])
+}
+
+// ---------------------------------------------------------------------------
+// Login throttling (no new dependencies, no Redis: Postgres counters so the
+// 6-8 API processes in infra/DEPLOYMENT.md share one view of failures).
+// Only failures are counted and a success deletes the rows, so the exam-start
+// burst of thousands of successful logins can never trip it.
+// The key holds a SHA-256 hash, never a username or IP in plaintext, so the
+// table cannot become an enumeration artefact if it is ever dumped.
+// ---------------------------------------------------------------------------
+
+model LoginThrottle {
+  key              String   @id
+  failures         Int      @default(0)
+  window_started_at DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  @@index([updated_at])
+}
+
+// ---------------------------------------------------------------------------
+// Password-reset auditing: who reset whose password and when.
+// ---------------------------------------------------------------------------
+
+model PasswordResetAudit {
+  id             String   @id @default(uuid()) @db.Uuid
+  admin_id       String   @db.Uuid
+  target_user_id String   @db.Uuid
+  created_at     DateTime @default(now())
+
+  admin  User @relation("PasswordResetBy", fields: [admin_id], references: [id], onDelete: Restrict)
+  target User @relation("PasswordResetTarget", fields: [target_user_id], references: [id], onDelete: Restrict)
+
+  @@index([admin_id])
+  @@index([target_user_id])
 }

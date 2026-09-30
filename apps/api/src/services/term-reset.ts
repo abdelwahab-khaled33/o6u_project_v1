@@ -16,6 +16,8 @@ export const TERM_RESET_DELETE_ORDER = [
   'Section',
   'DoctorAssignment',
   'ExcelImportLog',
+  'PasswordResetAudit',
+  'LoginThrottle',
   'User',
 ] as const;
 
@@ -47,6 +49,8 @@ export async function getTermResetCounts(): Promise<TermResetCounts> {
     prisma.section.count(),
     prisma.doctorAssignment.count(),
     prisma.excelImportLog.count(),
+    prisma.passwordResetAudit.count(),
+    prisma.loginThrottle.count(),
     prisma.user.count({ where: { role: { not: 'admin' } } }),
   ]);
 
@@ -68,6 +72,8 @@ export async function runTermReset(): Promise<TermResetCounts> {
     prisma.section.deleteMany(),
     prisma.doctorAssignment.deleteMany(),
     prisma.excelImportLog.deleteMany(),
+    prisma.passwordResetAudit.deleteMany(),
+    prisma.loginThrottle.deleteMany(),
     prisma.user.deleteMany({ where: { role: { not: 'admin' } } }),
   ]);
 

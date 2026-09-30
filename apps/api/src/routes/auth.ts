@@ -3,7 +3,18 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { signToken } from '../lib/jwt.js';
+import { clientIp } from '../middleware/lab-network.js';
 import { requireAuth, requirePermission } from '../middleware/auth.js';
+import {
+  PASSWORD_CHANGE_THROTTLE,
+  checkLoginThrottles,
+  checkSingleThrottle,
+  passwordChangeKey,
+  recordLoginFailures,
+  recordSingleThrottle,
+  resetLoginThrottles,
+  resetSingleThrottle,
+} from '../services/login-throttle.js';
 
 export const authRouter = Router();
 
@@ -47,6 +58,17 @@ authRouter.post('/login', async (req, res, next) => {
       return res.status(400).json({ error: 'Username and password are required' });
     }
 
+    // Checked before the user lookup and before bcrypt, so a throttled request
+    // costs one indexed read and answers identically whether the username
+    // exists or not. The delay is a Retry-After on a 429: holding the request
+    // open would burn the ~12/s-per-process login capacity directly.
+    const ip = clientIp(req);
+    const throttle = await checkLoginThrottles(parsed.data.username, ip);
+    if (throttle.throttled) {
+      res.setHeader('Retry-After', String(throttle.retryAfterSec));
+      return res.status(429).json({ error: 'Too many login attempts. Try again later.' });
+    }
+
     const user = await prisma.user.findUnique({
       where: { username: parsed.data.username },
     });
@@ -57,8 +79,13 @@ authRouter.post('/login', async (req, res, next) => {
     );
 
     if (!user || !user.is_active || !ok) {
+      await recordLoginFailures(parsed.data.username, ip);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
+
+    // Only failures are ever counted, so a success deletes the rows: the
+    // exam-start burst of legitimate logins can never trip its own counter.
+    await resetLoginThrottles(parsed.data.username, ip);
 
     const token = signToken(user.id, user.role);
     res.json({ token, user: toPublicUser(user) });
@@ -105,8 +132,18 @@ authRouter.post('/change-password', requireAuth, requirePermission('password.cha
       return res.status(400).json({ error: 'Valid current and new passwords are required (new: 8-72 chars)' });
     }
 
+    // Keyed from the token, not the body: the caller is already authenticated
+    // and there is no username oracle to protect here.
+    const changeKey = passwordChangeKey(req.auth!.userId);
+    const changeThrottle = await checkSingleThrottle(changeKey, PASSWORD_CHANGE_THROTTLE);
+    if (changeThrottle.throttled) {
+      res.setHeader('Retry-After', String(changeThrottle.retryAfterSec));
+      return res.status(429).json({ error: 'Too many password change attempts. Try again later.' });
+    }
+
     const ok = await bcrypt.compare(parsed.data.current_password, user.password_hash);
     if (!ok) {
+      await recordSingleThrottle(changeKey, PASSWORD_CHANGE_THROTTLE);
       return res.status(400).json({ error: 'Current password is incorrect' });
     }
 
@@ -115,6 +152,7 @@ authRouter.post('/change-password', requireAuth, requirePermission('password.cha
       where: { id: user.id },
       data: { password_hash: hash },
     });
+    await resetSingleThrottle(changeKey);
 
     res.json({ message: 'Password updated' });
   } catch (err) {
