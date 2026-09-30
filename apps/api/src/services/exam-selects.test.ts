@@ -89,4 +89,14 @@ describe('exam serialization selects keep what the screens need', () => {
     expect(Object.keys(EXAM_LIST_SELECT)).not.toContain('pool_questions');
     expect(Object.keys(EXAM_DETAIL_SELECT)).toContain('pool_questions');
   });
+
+  it('detail pool questions carry is_archived, so an exam referencing an archived question can name its cause', () => {
+    // DELETE /question-bank/:id is a soft delete, so the ExamQuestion join row
+    // survives while GET /question-bank filters the row out. Without this flag the
+    // wizard renders no checkbox for the id, the coverage check miscounts, and the
+    // submit fails 400 with no stated cause.
+    expect(Object.keys(EXAM_DETAIL_SELECT.pool_questions.include.question.select)).toContain(
+      'is_archived',
+    );
+  });
 });

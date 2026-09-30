@@ -113,6 +113,7 @@ const CASES: Case[] = [
   { label: 'GET /exams/:examId/live', method: 'get', path: `/exams/${BAD}/live`, message: 'Exam not found' },
   { label: 'PATCH /exams/:id', method: 'patch', path: `/exams/${BAD}`, body: { title: 'x' }, message: 'Exam not found' },
   { label: 'DELETE /exams/:id', method: 'delete', path: `/exams/${BAD}`, message: 'Exam not found' },
+  { label: 'POST /exams/:id/resubmit', method: 'post', path: `/exams/${BAD}/resubmit`, message: 'Exam not found' },
   {
     label: 'POST /exams/:examId/attempts/:studentExamId/release, bad examId',
     method: 'post',

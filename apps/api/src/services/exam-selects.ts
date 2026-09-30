@@ -42,7 +42,7 @@ export const EXAM_DETAIL_SELECT = {
   subject: { select: { id: true, code: true, name: true } },
   owner: { select: { id: true, full_name: true } },
   pool_questions: {
-    include: { question: { select: { id: true, text: true, difficulty: true, question_type: true } } },
+    include: { question: { select: { id: true, text: true, difficulty: true, question_type: true, is_archived: true } } },
   },
   target_sections: true,
   target_students: true,

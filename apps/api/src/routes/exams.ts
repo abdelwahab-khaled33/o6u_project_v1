@@ -612,7 +612,84 @@ examsRouter.delete(
   } catch (err) {
     next(err);
   }
-});
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Resubmit a rejected exam: rejected -> pending_approval, nothing more.
+// ---------------------------------------------------------------------------
+//
+// A rejected exam was a permanent dead end: admin-exams.ts refuses to approve
+// anything that is not pending_approval, and the only transition into
+// pending_approval was a doctor editing an APPROVED exam. The way out was
+// delete-and-recreate, which loses the attempt history. The intended workflow
+// is PATCH the rejected exam while it is still upcoming (allowed, stays
+// rejected) to fix what was refused, then resubmit.
+//
+// This lives here and not in admin-exams.ts because that router requires the
+// admin role, so an owner doctor could never reach it. The permission check is
+// handler-resolved through the role-derived key, mirroring POST /, because no
+// single requirePermission middleware key covers both roles under the finished
+// 18-key matrix: exams.approve is admin-only and exam.create is doctor-only,
+// and a 19th key would contradict that spec work.
+//
+// rejection_reason is cleared: it described the previous submission, the exam
+// may have been edited since the rejection, and both selects expose the field,
+// so keeping it would misrepresent the resubmitted exam on the approval screen.
+// Symmetric with PATCH clearing approved_by/approved_at on doctor-edit-approved.
+// There is deliberately no time gate and no pool revalidation here: approval
+// already refuses ended exams and rechecks pool sufficiency, and attempts are
+// generated at approval, not here.
+const resubmitExamSchema = z.object({}).strict();
+
+examsRouter.post(
+  '/:id/resubmit',
+  requireRoles('admin', 'doctor'),
+  requireUuidParam('id', 'Exam not found'),
+  async (req, res, next) => {
+  try {
+    const parsed = resubmitExamSchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid resubmit payload' });
+    }
+
+    const exam = await prisma.exam.findUnique({ where: { id: req.params.id as string } });
+    if (!exam) return res.status(404).json({ error: 'Exam not found' });
+
+    const role = req.auth!.role as 'admin' | 'doctor';
+    const permissionKey = role === 'admin' ? 'exams.approve' : 'exam.create';
+    const access = await resolvePermissionAccess(req.auth!.userId, role, permissionKey);
+    if (!access.active || !access.permission.allowed) {
+      return res.status(403).json({ error: 'Insufficient permissions' });
+    }
+
+    // Authorization before state, mirroring PATCH: an unauthorized caller meets
+    // 403 and never learns from the answer whether the exam is resubmittable.
+    if (role === 'admin' && exam.owner_id !== req.auth!.userId) {
+      const managed = await resolvePermissionAccess(req.auth!.userId, 'admin', 'exams.manage_all');
+      if (!managed.active || !managed.permission.allowed) {
+        return res.status(403).json({ error: 'Insufficient permissions' });
+      }
+    }
+    if (role !== 'admin' && exam.owner_id !== req.auth!.userId) {
+      return res.status(403).json({ error: 'You do not own this exam' });
+    }
+
+    if (exam.status !== 'rejected') {
+      return res.status(409).json({ error: 'Only rejected exams can be resubmitted' });
+    }
+
+    const updated = await prisma.exam.update({
+      where: { id: exam.id },
+      data: { status: 'pending_approval', rejection_reason: null },
+      select: EXAM_DETAIL_SELECT,
+    });
+    res.json({ exam: updated });
+  } catch (err) {
+    next(err);
+  }
+  },
+);
 
 examsRouter.post(
   '/:examId/attempts/:studentExamId/release',
