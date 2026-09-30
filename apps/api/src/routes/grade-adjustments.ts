@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { requireUuidParam } from '../lib/uuid-param.js';
 import { requireAuth, requirePermission, requireRoles } from '../middleware/auth.js';
@@ -20,6 +21,26 @@ import { ADJUSTMENT_TYPES } from '@exam/shared';
  */
 const MAX_ADJUSTMENT_POINTS = 9999.99;
 
+/**
+ * Whether `value` survives being written to a `Decimal(6,2)` column unchanged.
+ *
+ * This must be decimal arithmetic, not `Number.isInteger(value * 100)`. A JS
+ * number is binary, so 0.29 is really 0.289999999999999980015985556747182272374629974365234375 and
+ * `0.29 * 100` is 28.999999999999996. Enumerated over every two-decimal value in
+ * [0.01, 9999.99], that check refuses 131,256 of 1,000,000 -- 13.13% -- starting at
+ * 0.07, 0.14, 0.28, 0.29. It was proven against the running server, not inferred:
+ * on otherwise byte-identical bodies, `points: 0.07` and `0.29` answered 400 while
+ * `0.08` and `0.25` answered 200.
+ *
+ * `new Prisma.Decimal(n)` reads the number through its shortest round-trip decimal
+ * form, so 0.29 becomes exactly 0.29 and the multiply is exact. It is also the same
+ * arithmetic the column stores with, which is why this accepts precisely the values
+ * Postgres would keep and still refuses 1.005 and 0.294.
+ */
+export function hasAtMostTwoDecimals(value: number): boolean {
+  return new Prisma.Decimal(value).mul(100).isInteger();
+}
+
 const CompensateExamSchema = z.object({
   source_question_id: z.string().uuid(),
   adjustment_type: z.enum(ADJUSTMENT_TYPES),
@@ -27,7 +48,7 @@ const CompensateExamSchema = z.object({
     .number()
     .nonnegative()
     .max(MAX_ADJUSTMENT_POINTS, `points must not exceed ${MAX_ADJUSTMENT_POINTS}`)
-    .refine((n) => Number.isInteger(n * 100), {
+    .refine(hasAtMostTwoDecimals, {
       message: 'points must have at most 2 decimal places',
     })
     .optional(),

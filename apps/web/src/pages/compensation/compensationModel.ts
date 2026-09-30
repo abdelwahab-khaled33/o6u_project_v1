@@ -22,16 +22,6 @@ export type CompensationDraft = {
 // negative, rather than being dismissed as "not a number".
 const PLAIN_DECIMAL = /^-?\d*\.?\d*$/;
 
-/** Whether the server's own refine would accept this value. The route reads
- *  `Number.isInteger(n * 100)`, which is float arithmetic, so a handful of perfectly legal
- *  two-decimal values are refused: 0.29 * 100 is 28.999999999999996. Measured over every
- *  two-decimal value up to 9999.99, 131,256 of them are refused, including 0.07, 0.14, 0.29
- *  and 1.09. The UI checks the same condition so it can explain the refusal instead of
- *  letting the round trip fail with a decimal-place message about a value that has two. */
-function serverAccepts(value: number): boolean {
-  return Number.isInteger(value * 100);
-}
-
 function isPlainDecimal(raw: string): boolean {
   return PLAIN_DECIMAL.test(raw) && raw !== '' && /[0-9]/.test(raw);
 }
@@ -39,18 +29,6 @@ function isPlainDecimal(raw: string): boolean {
 function decimalPlaces(raw: string): number {
   const dot = raw.indexOf('.');
   return dot === -1 ? 0 : raw.length - dot - 1;
-}
-
-/** The nearest value with the same magnitude the server will accept, so a refusal can offer
- *  a way forward instead of only a complaint. Verified against serverAccepts before it is
- *  suggested, never assumed. */
-function safeAlternative(value: number): number | null {
-  for (const step of [0.01, -0.01, 0.1, -0.1, 1, -1]) {
-    const candidate = Number((value + step).toFixed(MAX_DECIMAL_PLACES));
-    if (candidate < 0 || candidate > MAX_POINTS) continue;
-    if (serverAccepts(candidate)) return candidate;
-  }
-  return null;
 }
 
 export function parsePoints(raw: string): number | null {
@@ -67,18 +45,13 @@ export function pointsRefusal(raw: string): string | null {
   if (!Number.isFinite(value)) return 'points must be a number';
   if (value < 0) return 'points cannot be negative';
   if (value > MAX_POINTS) return `points cannot be greater than ${MAX_POINTS}`;
+  // Counted on what the examiner typed, not on the parsed number. This used to be
+  // `Number.isInteger(value * 100)`, mirroring a server refine that was itself float
+  // arithmetic and so refused 13.13% of legal two-decimal values (0.29 * 100 is
+  // 28.999999999999996). The server now uses Prisma.Decimal and accepts all of them;
+  // the check here counts the string, which is exact and cannot drift from the input.
   if (decimalPlaces(trimmed) > MAX_DECIMAL_PLACES) {
     return `points can have at most ${MAX_DECIMAL_PLACES} decimal places, which is what the grade column stores`;
-  }
-  if (!serverAccepts(value)) {
-    const alternative = safeAlternative(value);
-    const suggestion =
-      alternative === null
-        ? 'try a whole or one-decimal value instead'
-        : `use ${alternative} instead`;
-    return `${trimmed} has two decimal places but the server will not store it, because it computes ${trimmed} x 100 as ${
-      value * 100
-    }. ${suggestion.charAt(0).toUpperCase()}${suggestion.slice(1)}.`;
   }
   return null;
 }

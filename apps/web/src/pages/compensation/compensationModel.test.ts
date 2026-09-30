@@ -94,12 +94,14 @@ describe('parsePoints', () => {
     expect(parsePoints('1e3')).toBeNull();
   });
 
-  it('rejects a two-decimal value the server would refuse, rather than letting it 400 later', () => {
-    // 0.29 * 100 === 28.999999999999996, so Number.isInteger fails and the server's
-    // own refine refuses it. 13% of all legal two-decimal values behave this way.
-    expect(parsePoints('0.29')).toBeNull();
-    expect(parsePoints('0.07')).toBeNull();
-    expect(parsePoints('1.09')).toBeNull();
+  it('passes through a two-decimal value the server used to refuse over float error', () => {
+    // 0.29 * 100 === 28.999999999999996, so the server's old Number.isInteger refine
+    // refused it and 13% of all legal two-decimal values with it. The server now uses
+    // Prisma.Decimal, so returning null here would block a value the server accepts --
+    // the browser must not be stricter than the thing it is talking to.
+    expect(parsePoints('0.29')).toBe(0.29);
+    expect(parsePoints('0.07')).toBe(0.07);
+    expect(parsePoints('1.09')).toBe(1.09);
   });
 });
 
@@ -112,20 +114,32 @@ describe('pointsRefusal', () => {
     expect(pointsRefusal('9999.99')).toBeNull();
   });
 
-  it('names the real reason rather than blaming a decimal count the value does not have', () => {
-    const message = pointsRefusal('0.29');
-    expect(message).toContain('0.29');
-    expect(message).not.toContain('at most 2 decimal places');
-  });
+  // The server's refine used to be `Number.isInteger(n * 100)`, float arithmetic, and
+  // it refused 131,256 of the legal two-decimal values -- 0.29 * 100 is
+  // 28.999999999999996. The UI mirrored it so it could explain the refusal, which made
+  // the browser the only place a user could learn which values the server would take.
+  // The server now uses Prisma.Decimal, so the browser must accept them too: a refusal
+  // for 0.29 would now be the browser inventing a rule the server does not have.
+  it.each(['0.07', '0.14', '0.28', '0.29', '0.55', '0.56', '1.09', '1.1', '1.11', '1.12'])(
+    'accepts %s, which float arithmetic used to refuse',
+    (value) => {
+      expect(pointsRefusal(value)).toBeNull();
+      expect(parsePoints(value)).toBe(Number(value));
+    },
+  );
 
-  it('suggests a nearby value the server will accept, and only one it has checked', () => {
-    const message = pointsRefusal('0.29');
-    expect(message).toContain('0.3');
-    expect(parsePoints('0.3')).toBe(0.3);
+  it('never explains a refusal with float arithmetic', () => {
+    // The old copy read "0.29 has two decimal places but the server will not store it,
+    // because it computes 0.29 x 100 as 28.999999999999996". Any surviving mention of
+    // multiplying by 100 is a leftover of a bug the server no longer has.
+    for (const raw of ['1.005', '0.294', '12.3456', '-1', '10000', 'abc', '']) {
+      expect(pointsRefusal(raw) ?? '').not.toMatch(/x 100|\* 100/);
+    }
   });
 
   it('blames the decimal count when that is genuinely the problem', () => {
     expect(pointsRefusal('1.005')).toContain('at most 2 decimal places');
+    expect(pointsRefusal('0.294')).toContain('at most 2 decimal places');
   });
 
   it('distinguishes empty, non-numeric, negative and over-the-ceiling', () => {

@@ -38,7 +38,7 @@ vi.mock('../middleware/auth.js', () => ({
 
 import express from 'express';
 import request from 'supertest';
-import { gradeAdjustmentsRouter } from './grade-adjustments.js';
+import { gradeAdjustmentsRouter, hasAtMostTwoDecimals } from './grade-adjustments.js';
 
 const app = express();
 app.use(express.json());
@@ -170,12 +170,12 @@ describe('POST /grade-adjustments/exams/:id/compensate answers 403 before 409', 
 // student by 8x. The 500 is a bug; the over-credit is a policy question, so only
 // the storage ceiling is enforced here.
 // ---------------------------------------------------------------------------
-describe('set_points is bounded by what the column can store', () => {
-  const setPoints = (points: unknown) =>
-    request(app)
-      .post(`/grade-adjustments/exams/${EXAM}/compensate`)
-      .send({ ...body, adjustment_type: 'set_points', points });
+const setPoints = (points: unknown) =>
+  request(app)
+    .post(`/grade-adjustments/exams/${EXAM}/compensate`)
+    .send({ ...body, adjustment_type: 'set_points', points });
 
+describe('set_points is bounded by what the column can store', () => {
   it.each([10000, 10000.01, 99999.99, 1e9, Number.MAX_SAFE_INTEGER])(
     'answers 400 rather than 500 for points=%s',
     async (points) => {
@@ -210,5 +210,53 @@ describe('set_points is bounded by what the column can store', () => {
   it('leaves full_credit alone, since it derives its points from the exam', async () => {
     // A 500 here is impossible: the service substitutes exam.points_per_question.
     expect((await request(app).post(`/grade-adjustments/exams/${EXAM}/compensate`).send(body)).status).toBe(200);
+  });
+});
+// The refine used to be `Number.isInteger(n * 100)`, which is binary float
+// arithmetic: 0.29 * 100 is 28.999999999999996, so 131,256 of the legal
+// two-decimal values in [0.01, 9999.99] -- 13.13% of them -- were refused while
+// the value plainly has two decimal places. Measured against the running server
+// before the fix: on otherwise byte-identical bodies, points 0.07 and 0.29 gave
+// 400 Invalid payload while 0.08 and 0.25 gave 200. The check must be decimal
+// arithmetic, the same arithmetic the Decimal(6,2) column stores with.
+describe('POST /grade-adjustments two-decimal values survive float error', () => {
+  const refusedByFloat = [0.07, 0.14, 0.28, 0.29, 0.55, 0.56, 0.57, 0.58, 1.09, 1.1, 1.11, 1.12];
+  const acceptedByFloat = [0.08, 0.25, 1.5, 2, 9999.99];
+
+  it.each(refusedByFloat)('accepts %s, which float arithmetic wrongly refused', async (points) => {
+    expect(Number.isInteger(points * 100)).toBe(false);
+    expect((await setPoints(points)).status).toBe(200);
+    expect(compensate).toHaveBeenCalledWith(expect.objectContaining({ points }));
+  });
+
+  it.each(acceptedByFloat)('still accepts %s', async (points) => {
+    expect((await setPoints(points)).status).toBe(200);
+  });
+
+  it.each([1.005, 0.294, 0.0001])('still rejects %s, which really has more than two decimals', async (points) => {
+    expect((await setPoints(points)).status).toBe(400);
+    expect(compensate).not.toHaveBeenCalled();
+  });
+
+  it('refuses no legal two-decimal value anywhere in the column range', () => {
+    // Enumerated on the predicate, not over HTTP: a million supertest round trips
+    // is a five-second test that proves the same thing far more slowly.
+    const refused: number[] = [];
+    for (let i = 1; i <= 999999; i++) {
+      const points = i / 100;
+      if (!hasAtMostTwoDecimals(points)) refused.push(points);
+    }
+    expect(refused).toEqual([]);
+  });
+
+  it('agrees with the old float check on the cases that check was right about', () => {
+    // The fix must not turn into "accept everything": anything float accepted
+    // before is still accepted, and genuinely-three-decimal values still refuse.
+    for (const points of [0.08, 0.25, 1.5, 2, 9999.99, 0, 0.01]) {
+      expect(hasAtMostTwoDecimals(points)).toBe(true);
+    }
+    for (const points of [1.005, 0.294, 0.0001, 12.3456]) {
+      expect(hasAtMostTwoDecimals(points)).toBe(false);
+    }
   });
 });
