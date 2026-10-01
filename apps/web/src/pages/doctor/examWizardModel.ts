@@ -101,7 +101,28 @@ function positiveInt(value: string): number | null {
   return parsed !== null && parsed > 0 ? parsed : null;
 }
 
-export function wizardProblems(form: WizardForm, bank: Pick<PoolQuestion, 'id' | 'difficulty'>[]): string[] {
+/** The ids in the pool that the exam detail marks as archived (soft-deleted). The bank never
+ *  contains them — GET /question-bank filters archived rows out — so they cannot be derived from
+ *  the bank and must be passed in from the detail response. Order follows poolIds. */
+export function selectedArchivedIds(poolIds: string[], archivedIds: string[] = []): string[] {
+  if (archivedIds.length === 0) return [];
+  const archived = new Set(archivedIds);
+  return poolIds.filter((id) => archived.has(id));
+}
+
+/** One fixed sentence for the archived cause, so the doctor and TA wizards cannot drift apart.
+ *  Singular and plural differ in verb as well as noun, so no generic plural() helper is used. */
+export function archivedPoolProblem(count: number): string {
+  return count === 1
+    ? '1 question in this pool is archived and cannot be used. Remove it to save.'
+    : `${count} questions in this pool are archived and cannot be used. Remove them to save.`;
+}
+
+export function wizardProblems(
+  form: WizardForm,
+  bank: Pick<PoolQuestion, 'id' | 'difficulty'>[],
+  opts: { archivedIds?: string[] } = {},
+): string[] {
   const problems: string[] = [];
 
   if (form.subjectId === '') problems.push('Choose the subject this exam belongs to.');
@@ -111,6 +132,12 @@ export function wizardProblems(form: WizardForm, bank: Pick<PoolQuestion, 'id' |
   if (title.length > TITLE_MAX) problems.push(`Title must be ${TITLE_MAX} characters or fewer.`);
 
   if (form.poolIds.length === 0) problems.push('Select at least one question for the pool.');
+
+  // The archived cause is stated in addition to the coverage check, never instead of it. An archived
+  // id is absent from the bank, so the sufficiency count below already excludes it; skipping that
+  // check here would move the failure from a blocked save to a 400 at submit.
+  const archived = selectedArchivedIds(form.poolIds, opts.archivedIds);
+  if (archived.length > 0) problems.push(archivedPoolProblem(archived.length));
 
   if (mixTotal(form.mix) === 0) problems.push('The difficulty mix must ask for at least one question.');
   else {

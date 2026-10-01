@@ -53,7 +53,7 @@ export type ExamDetail = {
   pool_questions: {
     exam_id: string;
     question_id: string;
-    question: { id: string; text: string; difficulty: Difficulty; question_type: QuestionType };
+    question: { id: string; text: string; difficulty: Difficulty; question_type: QuestionType; is_archived: boolean };
   }[];
   target_sections: { exam_id: string; section_id: string }[];
   target_students: { exam_id: string; student_id: string }[];

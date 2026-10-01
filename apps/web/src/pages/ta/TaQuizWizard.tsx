@@ -12,6 +12,7 @@ import { api } from '../../lib/api';
 import { describeError, EmptyState, formatDateTime, plural, type Subject } from '../admin/adminShared';
 import { formatGrade, type BankQuestion } from '../doctor/DoctorQuestionForm';
 import { pointsValue, type ExamDetail } from '../doctor/doctorExamTypes';
+import { archivedPoolProblem } from '../doctor/examWizardModel';
 import {
   buildQuizPayload,
   DURATION_MAX,
@@ -120,6 +121,7 @@ export function TaQuizWizard({ quizId }: { quizId?: string }) {
   const [sections, setSections] = useState<RosterSection[]>([]);
   const [roster, setRoster] = useState<RosterStudent[]>([]);
   const [form, setForm] = useState<QuizForm>(() => emptyForm(''));
+  const [archivedPool, setArchivedPool] = useState<{ id: string; text: string; difficulty: Difficulty }[]>([]);
   const [difficultyFilter, setDifficultyFilter] = useState<Difficulty | ''>('');
   const [loadingSubjects, setLoadingSubjects] = useState(true);
   const [loadingQuiz, setLoadingQuiz] = useState(editing);
@@ -143,6 +145,13 @@ export function TaQuizWizard({ quizId }: { quizId?: string }) {
     try {
       const quiz = (await api.get<{ exam: ExamDetail }>(`/exams/${quizId}`)).exam;
       setForm(formFromQuiz(quiz));
+      // The shared bank never contains archived rows, so the archived pool comes from the detail
+      // response, which carries is_archived per pool question.
+      setArchivedPool(
+        quiz.pool_questions
+          .filter((link) => link.question.is_archived === true)
+          .map((link) => ({ id: link.question_id, text: link.question.text, difficulty: link.question.difficulty })),
+      );
       setError(null);
     } catch (caught) {
       setError(describeError(caught));
@@ -197,7 +206,15 @@ export function TaQuizWizard({ quizId }: { quizId?: string }) {
   useEffect(() => { void loadRoster(form.subjectId); }, [loadRoster, form.subjectId]);
 
   const selected = useMemo(() => new Set(form.poolIds), [form.poolIds]);
-  const problems = taQuizProblems(form, bank, { sections, students: roster });
+  // poolIds keeps archived ids by design: dropping them silently would hide state the server still
+  // holds, so they stay selected and render below as a stated problem until removed.
+  const archivedIds = useMemo(() => archivedPool.map((question) => question.id), [archivedPool]);
+  const selectedArchived = useMemo(
+    () => archivedPool.filter((question) => selected.has(question.id)),
+    [archivedPool, selected],
+  );
+  const archivedIdSet = useMemo(() => new Set(archivedIds), [archivedIds]);
+  const problems = taQuizProblems(form, bank, { sections, students: roster }, { archivedIds });
   const valid = problems.length === 0;
 
   /** With own_questions the server refuses a pool it did not author, so a question the TA did not write is
@@ -252,18 +269,26 @@ export function TaQuizWizard({ quizId }: { quizId?: string }) {
     });
   }
 
+  function removeArchived(id: string) {
+    patch({ poolIds: form.poolIds.filter((each) => each !== id) });
+  }
+
   function selectVisible() {
     patch({ poolIds: [...new Set([...form.poolIds, ...visibleBank.map((question) => question.id)])] });
   }
 
   /** Switching to own_questions can leave a question selected that the new source forbids, so the pool is
-   *  trimmed in the same tick rather than being left to fail on submit. */
+   *  trimmed in the same tick rather than being left to fail on submit. Archived selections are kept
+   *  as a stated problem instead of being counted as authorship drops: they are unusable under either
+   *  source, and dropping them here would report the wrong cause. */
   function setQuizSource(quizSource: QuizSource) {
     if (quizSource !== 'own_questions') {
       patch({ quizSource });
       return;
     }
-    const kept = form.poolIds.filter((id) => bank.find((question) => question.id === id)?.is_mine === true);
+    const keptMine = form.poolIds.filter((id) => bank.find((question) => question.id === id)?.is_mine === true);
+    const keptArchived = form.poolIds.filter((id) => archivedIdSet.has(id));
+    const kept = [...new Set([...keptMine, ...keptArchived])];
     const dropped = form.poolIds.length - kept.length;
     patch({
       quizSource,
@@ -448,6 +473,12 @@ export function TaQuizWizard({ quizId }: { quizId?: string }) {
                     />
                   ))}
                 </div>
+                {selectedArchived.length > 0 && (
+                  <p className="muted">
+                    {archivedPoolProblem(selectedArchived.length)} The counts above count only
+                    questions that can still be used.
+                  </p>
+                )}
               </fieldset>
 
               <div className="filter-bar">
@@ -470,6 +501,43 @@ export function TaQuizWizard({ quizId }: { quizId?: string }) {
                   </Button>
                 </div>
               </div>
+
+              {selectedArchived.length > 0 && (
+                <fieldset className="fieldset-reset">
+                  <legend className="muted">
+                    {selectedArchived.length === 1
+                      ? '1 question in your pool can no longer be used'
+                      : `${selectedArchived.length} questions in your pool can no longer be used`}
+                  </legend>
+                  <ul className="pick-list">
+                    {selectedArchived.map((question) => (
+                      <li key={question.id}>
+                        <div className="checkbox-row">
+                          <input
+                            id={`ta-wizard-archived-${question.id}`}
+                            type="checkbox"
+                            checked={false}
+                            disabled
+                            aria-disabled="true"
+                          />
+                          <span className="pick-meta">{question.difficulty}</span>
+                          <span className="question-text">{question.text}</span>
+                        </div>
+                        <p className="muted">
+                          This question was deleted (archived) and cannot be used in a quiz.
+                          Saving is blocked until it is removed. The server refuses it with
+                          “Some pool questions were not found or are archived”.
+                        </p>
+                        <div className="row-actions">
+                          <Button type="button" variant="secondary" onClick={() => removeArchived(question.id)}>
+                            Remove this question
+                          </Button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </fieldset>
+              )}
 
               {loadingBank ? (
                 <div><Spinner label="Loading the shared bank" /> Loading the shared bank…</div>

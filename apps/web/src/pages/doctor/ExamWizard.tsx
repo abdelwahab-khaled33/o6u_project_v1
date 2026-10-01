@@ -12,6 +12,7 @@ import { api } from '../../lib/api';
 import { describeError, EmptyState, formatDateTime, plural, type Subject } from '../admin/adminShared';
 import { formatGrade, type BankQuestion } from './DoctorQuestionForm';
 import {
+  archivedPoolProblem,
   buildExamPayload,
   DURATION_MAX,
   isoToLocal,
@@ -138,6 +139,7 @@ export function ExamWizard({ examId }: { examId?: string }) {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [bank, setBank] = useState<BankQuestion[]>([]);
   const [form, setForm] = useState<WizardForm>(() => emptyForm(''));
+  const [archivedPool, setArchivedPool] = useState<{ id: string; text: string; difficulty: Difficulty }[]>([]);
   const [difficultyFilter, setDifficultyFilter] = useState<Difficulty | ''>('');
   const [loadedStatus, setLoadedStatus] = useState<ExamStatus | null>(null);
   const [loadingSubjects, setLoadingSubjects] = useState(true);
@@ -161,6 +163,13 @@ export function ExamWizard({ examId }: { examId?: string }) {
     try {
       const exam = (await api.get<{ exam: ExamDetail }>(`/exams/${examId}`)).exam;
       setForm(formFromExam(exam));
+      // The bank never contains archived rows, so the archived pool cannot be derived from it.
+      // It comes from the detail response, which carries is_archived per pool question.
+      setArchivedPool(
+        exam.pool_questions
+          .filter((link) => link.question.is_archived === true)
+          .map((link) => ({ id: link.question_id, text: link.question.text, difficulty: link.question.difficulty })),
+      );
       setLoadedStatus(exam.status);
       setError(null);
     } catch (caught) {
@@ -191,7 +200,14 @@ export function ExamWizard({ examId }: { examId?: string }) {
   useEffect(() => { void loadBank(form.subjectId); }, [loadBank, form.subjectId]);
 
   const selected = useMemo(() => new Set(form.poolIds), [form.poolIds]);
-  const problems = wizardProblems(form, bank);
+  // poolIds keeps archived ids by design: dropping them silently would hide state the server still
+  // holds, so they stay selected and render below as a stated problem until removed.
+  const archivedIds = useMemo(() => archivedPool.map((question) => question.id), [archivedPool]);
+  const selectedArchived = useMemo(
+    () => archivedPool.filter((question) => selected.has(question.id)),
+    [archivedPool, selected],
+  );
+  const problems = wizardProblems(form, bank, { archivedIds });
   const valid = problems.length === 0;
 
   const bankByDifficulty = useMemo(() => {
@@ -232,6 +248,10 @@ export function ExamWizard({ examId }: { examId?: string }) {
     patch({
       poolIds: selected.has(id) ? form.poolIds.filter((each) => each !== id) : [...form.poolIds, id],
     });
+  }
+
+  function removeArchived(id: string) {
+    patch({ poolIds: form.poolIds.filter((each) => each !== id) });
   }
 
   function selectVisible() {
@@ -358,6 +378,12 @@ export function ExamWizard({ examId }: { examId?: string }) {
                     />
                   ))}
                 </div>
+                {selectedArchived.length > 0 && (
+                  <p className="muted">
+                    {archivedPoolProblem(selectedArchived.length)} The counts above count only
+                    questions that can still be used.
+                  </p>
+                )}
               </fieldset>
 
               <div className="filter-bar">
@@ -380,6 +406,43 @@ export function ExamWizard({ examId }: { examId?: string }) {
                   </Button>
                 </div>
               </div>
+
+              {selectedArchived.length > 0 && (
+                <fieldset className="fieldset-reset">
+                  <legend className="muted">
+                    {selectedArchived.length === 1
+                      ? '1 question in your pool can no longer be used'
+                      : `${selectedArchived.length} questions in your pool can no longer be used`}
+                  </legend>
+                  <ul className="pick-list">
+                    {selectedArchived.map((question) => (
+                      <li key={question.id}>
+                        <div className="checkbox-row">
+                          <input
+                            id={`wizard-archived-${question.id}`}
+                            type="checkbox"
+                            checked={false}
+                            disabled
+                            aria-disabled="true"
+                          />
+                          <span className="pick-meta">{question.difficulty}</span>
+                          <span className="question-text">{question.text}</span>
+                        </div>
+                        <p className="muted">
+                          This question was deleted (archived) and cannot be used in an exam.
+                          Saving is blocked until it is removed. The server refuses it with
+                          “Some pool questions were not found or are archived”.
+                        </p>
+                        <div className="row-actions">
+                          <Button type="button" variant="secondary" onClick={() => removeArchived(question.id)}>
+                            Remove this question
+                          </Button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </fieldset>
+              )}
 
               {loadingBank ? (
                 <div><Spinner label="Loading your questions" /> Loading your questions…</div>

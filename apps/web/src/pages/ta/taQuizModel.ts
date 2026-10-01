@@ -118,6 +118,7 @@ export function taQuizProblems(
   form: QuizForm,
   bank: Pick<SharedQuestion, 'id' | 'difficulty' | 'is_mine'>[],
   roster: { sections: RosterSection[]; students: RosterStudent[] },
+  opts: { archivedIds?: string[] } = {},
 ): string[] {
   // own_questions is enforced server-side, so the bank handed to the shared checks is pre-filtered on
   // the server's own is_mine flag. Without this a mix the caller's own questions cannot cover would pass
@@ -126,7 +127,7 @@ export function taQuizProblems(
     ? bank.filter((question) => question.is_mine === true)
     : bank;
 
-  const shared = wizardProblems(form, countableBank);
+  const shared = wizardProblems(form, countableBank, { archivedIds: opts.archivedIds });
   const problems = shared
     // "this exam belongs to" is wrong copy in a quiz wizard, and the two target sentences offer a
     // fallback the server refuses for a TA, so all three are replaced rather than shown as they are.

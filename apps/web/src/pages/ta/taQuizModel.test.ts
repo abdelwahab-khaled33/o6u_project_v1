@@ -335,6 +335,31 @@ describe('canManageRow', () => {
   });
 });
 
+describe('archived pool selections', () => {
+  it('names the archived cause with the same wording as the doctor wizard', () => {
+    const problems = taQuizProblems(form({ poolIds: [QUESTION_1, QUESTION_2, QUESTION_3, 'archived-hard'] }), bank, {
+      sections,
+      students,
+    }, { archivedIds: ['archived-hard'] });
+    expect(problems).toContain(
+      '1 question in this pool is archived and cannot be used. Remove it to save.',
+    );
+  });
+
+  it('keeps the coverage check alongside the archived cause, never instead of it', () => {
+    const problems = taQuizProblems(
+      form({ poolIds: [QUESTION_1, 'archived-hard'], mix: { easy: 2, medium: 1, hard: 1 } }),
+      bank,
+      { sections, students },
+      { archivedIds: ['archived-hard'] },
+    );
+    expect(problems).toContain(
+      '1 question in this pool is archived and cannot be used. Remove it to save.',
+    );
+    expect(problems).toContain('Pool has only 1 easy question(s) but 2 are required');
+  });
+});
+
 describe('quizStatusNotice', () => {
   it('never promises an administrator approval step for a TA quiz', () => {
     // Verified live: a TA quiz lands with status 'approved' and approved_by set to the TA, and PATCH

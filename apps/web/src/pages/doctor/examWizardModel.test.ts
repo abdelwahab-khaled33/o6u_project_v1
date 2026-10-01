@@ -281,3 +281,47 @@ describe('mixTotal', () => {
     expect(mixTotal({ easy: 0, medium: 0, hard: 0 })).toBe(0);
   });
 });
+
+describe('archived pool selections', () => {
+  const archivedBank = pool(
+    question('q1', 'easy'),
+    question('q2', 'easy'),
+    question('q3', 'medium'),
+    question('q4', 'hard'),
+  );
+
+  it('names the archived cause instead of only reporting a short pool', () => {
+    const problems = wizardProblems(form({ poolIds: ['q1', 'q2', 'q3', 'q4', 'archived-hard'] }), archivedBank, {
+      archivedIds: ['archived-hard'],
+    });
+    expect(problems).toContain(
+      '1 question in this pool is archived and cannot be used. Remove it to save.',
+    );
+  });
+
+  it('keeps the coverage check alongside the archived cause, never instead of it', () => {
+    const problems = wizardProblems(
+      form({ poolIds: ['q1', 'archived-hard'], mix: { easy: 2, medium: 1, hard: 1 } }),
+      archivedBank,
+      { archivedIds: ['archived-hard'] },
+    );
+    expect(problems).toContain(
+      '1 question in this pool is archived and cannot be used. Remove it to save.',
+    );
+    expect(problems).toContain('Pool has only 1 easy question(s) but 2 are required');
+  });
+
+  it('counts more than one archived question with the plural wording', () => {
+    const problems = wizardProblems(form({ poolIds: ['q1', 'a1', 'a2'] }), archivedBank, {
+      archivedIds: ['a1', 'a2'],
+    });
+    expect(problems).toContain(
+      '2 questions in this pool are archived and cannot be used. Remove them to save.',
+    );
+  });
+
+  it('says nothing about archived questions when none are selected', () => {
+    expect(wizardProblems(form(), archivedBank, { archivedIds: ['archived-hard'] })).toEqual([]);
+    expect(wizardProblems(form(), archivedBank)).toEqual([]);
+  });
+});
