@@ -9,6 +9,7 @@ import { Field, Input, Select } from '../../components/ui/Field';
 import { Spinner } from '../../components/ui/Spinner';
 import { Table } from '../../components/ui/Table';
 import { api } from '../../lib/api';
+import { useAuth } from '../../hooks/useAuth';
 import { describeError, EmptyState, formatDateTime, humanise, plural } from '../admin/adminShared';
 import type { ExamDetail } from '../doctor/doctorExamTypes';
 import {
@@ -34,6 +35,15 @@ const STATUS_FILTERS = [
   { value: 'auto_submitted', label: 'Auto submitted' },
 ];
 
+// Mirrors ExamCompensationPage's BACK_LINKS: the same component serves doctor and
+// admin under different routes, so the back link is derived from the signed-in
+// role rather than from a prop. A prop-derived back link pointing at the wrong
+// exams list is a navigation bug the server cannot catch.
+const BACK_LINKS = {
+  admin: { to: '/admin/exams', label: 'Back to exams' },
+  doctor: { to: '/doctor/exams', label: 'Back to exams' },
+} as const;
+
 async function settle<T>(load: Promise<T>): Promise<{ data: T | null; error: string | null }> {
   try {
     return { data: await load, error: null };
@@ -52,6 +62,8 @@ const DEADLINE_LABELS = {
 export function ExamLivePage() {
   const { examId } = useParams();
   const id = examId ?? '';
+  const { user } = useAuth();
+  const back = user?.role === 'admin' ? BACK_LINKS.admin : BACK_LINKS.doctor;
 
   const [exam, setExam] = useState<ExamDetail | null>(null);
   // null, not []: a failed request is not the same claim as "this exam has no attempts", and
@@ -141,7 +153,7 @@ export function ExamLivePage() {
     <div>
       <Card>
         <p className="muted">
-          <Link to="/doctor/exams">Back to exams</Link>
+          <Link to={back.to}>{back.label}</Link>
         </p>
         <div className="results-head">
           <div>

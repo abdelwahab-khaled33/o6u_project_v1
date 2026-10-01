@@ -225,6 +225,12 @@ export function AdminExamsPage() {
                         >
                           Compensate
                         </Button>
+                        <Button
+                          variant="secondary"
+                          onClick={() => navigate(`/admin/exams/${exam.id}/live`)}
+                        >
+                          Monitor
+                        </Button>
                       </div>
                       {exam.status === 'pending_approval' && (
                         <>

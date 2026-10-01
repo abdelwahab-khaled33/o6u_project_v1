@@ -80,6 +80,7 @@ export default function App() {
               <Route path="results" element={<SubjectResultsPage detailsBase="/admin/results" />} />
               <Route path="results/:examId" element={<ExamResultsPage />} />
               <Route path="exams/:examId/compensate" element={<ExamCompensationPage />} />
+              <Route path="exams/:examId/live" element={<ExamLivePage />} />
               <Route path="permissions" element={<AdminPermissionsPage />} />
               <Route path="term-reset" element={<AdminTermResetPage />} />
             </Route>
