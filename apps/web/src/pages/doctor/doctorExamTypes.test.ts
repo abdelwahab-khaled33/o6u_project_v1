@@ -5,6 +5,8 @@ import {
   pointsValue,
   canDeleteExam,
   isUpcoming,
+  canResubmit,
+  resubmitNotice,
 } from './doctorExamTypes';
 
 describe('editOutcomeNotice', () => {
@@ -36,10 +38,11 @@ describe('editOutcomeExplainer', () => {
       .toContain('sends this exam back to an administrator for approval');
   });
 
-  it('tells a rejected exam that saving is not a way back, and says what is', () => {
+  it('tells a rejected exam that saving is not a way back, and names the route that is', () => {
     const text = editOutcomeExplainer('rejected');
     expect(text).toContain('does not put a rejected exam back in the queue');
-    expect(text).toContain('Delete this exam and create a new one');
+    expect(text).toContain('use Resubmit');
+    expect(text).not.toContain('Delete this exam and create a new one');
     expect(text).not.toContain('sends this exam back to an administrator for approval');
   });
 
@@ -85,5 +88,42 @@ describe('isUpcoming and canDeleteExam', () => {
 
   it('allows deleting an exam that was never approved, however old', () => {
     expect(canDeleteExam({ start_time: '2026-09-01T08:00:00.000Z', status: 'rejected' }, now)).toBe(true);
+  });
+});
+
+describe('canResubmit', () => {
+  const now = Date.parse('2026-10-01T09:00:00.000Z');
+  const future = '2026-10-01T10:00:00.000Z';
+  const started = '2026-10-01T08:00:00.000Z';
+
+  it('allows resubmitting a rejected exam that has not started', () => {
+    expect(canResubmit('rejected', future, now)).toBe(true);
+  });
+
+  it('refuses every status the resubmit route does not accept, so the button never offers a 409', () => {
+    expect(canResubmit('approved', future, now)).toBe(false);
+    expect(canResubmit('pending_approval', future, now)).toBe(false);
+    expect(canResubmit('draft', future, now)).toBe(false);
+    expect(canResubmit('locked', future, now)).toBe(false);
+    expect(canResubmit('closed', future, now)).toBe(false);
+  });
+
+  it('refuses a rejected exam that has already started, which would queue an exam nobody can approve in time', () => {
+    expect(canResubmit('rejected', started, now)).toBe(false);
+  });
+
+  it('refuses an unparseable start time rather than guessing it has not started', () => {
+    expect(canResubmit('rejected', 'not-a-date', now)).toBe(false);
+  });
+});
+
+describe('resubmitNotice', () => {
+  it('says the exam went back into the approval queue', () => {
+    expect(resubmitNotice('Compiler final'))
+      .toBe('Resubmitted "Compiler final". It is back with the administrator for approval.');
+  });
+
+  it('does not claim the exam is approved, because resubmitting only changes the status', () => {
+    expect(resubmitNotice('Compiler final')).not.toContain('is approved');
   });
 });

@@ -13,7 +13,9 @@ import { describeError, EmptyState, formatDateTime, humanise, plural } from '../
 import { formatGrade } from './DoctorQuestionForm';
 import {
   canDeleteExam,
+  canResubmit,
   isUpcoming,
+  resubmitNotice,
   STATUS_LABELS,
   type ExamStatus,
   type ExamSummary,
@@ -39,6 +41,8 @@ export function DoctorExamsPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(incoming ?? null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [confirmResubmit, setConfirmResubmit] = useState<string | null>(null);
+  const [resubmitted, setResubmitted] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const loadExams = useCallback(async () => {
@@ -76,6 +80,30 @@ export function DoctorExamsPage() {
     }
   }
 
+  async function resubmitExam(exam: ExamSummary) {
+    setBusyId(exam.id);
+    setError(null);
+    setNotice(null);
+    try {
+      // The route's schema is strict and the body is empty, so {} is the whole payload: the route
+      // changes the status to pending_approval and clears rejection_reason, and nothing else.
+      await api.post(`/exams/${exam.id}/resubmit`, {});
+      setConfirmResubmit(null);
+      // Per-row, not the page-level notice: every mutation on this page clears that one, so an
+      // approve or a delete on a different row would wipe a sentence somebody is still reading.
+      setResubmitted((previous) => ({ ...previous, [exam.id]: resubmitNotice(exam.title) }));
+      await loadExams();
+    } catch (caught) {
+      // The confirm buttons are cleared on the failure path too, which deleteExam does not do: a
+      // refusal would otherwise leave them on screen inviting a retry of the same refused action,
+      // and the reason would have to be read off a button the doctor is being pushed to press.
+      setConfirmResubmit(null);
+      setError(describeError(caught));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   return (
     <div>
       <Card>
@@ -96,6 +124,7 @@ export function DoctorExamsPage() {
                 onChange={(event) => {
                   setStatus(event.target.value as ExamStatus | '');
                   setConfirmDelete(null);
+                  setConfirmResubmit(null);
                 }}
               >
                 {STATUS_FILTERS.map((filter) => (
@@ -141,6 +170,9 @@ export function DoctorExamsPage() {
                         </span>
                         {exam.status === 'rejected' && exam.rejection_reason && (
                           <p className="muted">Rejected: {exam.rejection_reason}</p>
+                        )}
+                        {resubmitted[exam.id] && (
+                          <p className="muted">{resubmitted[exam.id]}</p>
                         )}
                       </td>
                       <td>
@@ -200,6 +232,37 @@ export function DoctorExamsPage() {
                           >
                             Edit
                           </Button>
+                          {/* Only a rejected exam can be resubmitted at all, and only while it has not
+                              started — see canResubmit. For any other status the button is absent
+                              rather than disabled, because resubmitting it is not a thing this exam
+                              could ever need. */}
+                          {exam.status === 'rejected' && (confirmResubmit === exam.id ? (
+                            <>
+                              <span className="muted">Resubmit this exam?</span>
+                              <Button
+                                variant="primary"
+                                disabled={busyId === exam.id}
+                                onClick={() => { void resubmitExam(exam); }}
+                              >
+                                {busyId === exam.id ? 'Resubmitting…' : 'Confirm resubmit'}
+                              </Button>
+                              <Button variant="secondary" onClick={() => setConfirmResubmit(null)}>Cancel</Button>
+                            </>
+                          ) : (
+                            <Button
+                              variant="primary"
+                              disabled={!canResubmit(exam.status, exam.start_time)}
+                              title={canResubmit(exam.status, exam.start_time)
+                                ? 'Put this rejected exam back in the approval queue. This only changes its status and clears the reason it was rejected.'
+                                : 'This exam has already started, so resubmitting it would only queue an exam an administrator cannot approve in time. Delete it instead.'}
+                              onClick={() => {
+                                setConfirmResubmit(exam.id);
+                                setNotice(null);
+                              }}
+                            >
+                              Resubmit
+                            </Button>
+                          ))}
                           {confirmDelete === exam.id ? (
                             <>
                               <span className="muted">Delete this exam?</span>

@@ -82,6 +82,28 @@ export function canDeleteExam(exam: { start_time: string; status: ExamStatus }, 
   return isUpcoming(exam.start_time, now) || exam.status !== 'approved';
 }
 
+/** Whether to offer the Resubmit button. Two halves, and both are load-bearing.
+ *
+ *  The status half comes from the route: exams.ts answers 409 unless the exam is `rejected`, so any
+ *  other status would offer a button whose only possible result is a refusal.
+ *
+ *  The time half is ours, not the server's: the resubmit route has no time gate at all, so a rejected
+ *  exam that already started could be pushed back into the queue and only fail later, at the
+ *  administrator's desk, who would then be looking at an exam whose window is closed. Gating the
+ *  button on `isUpcoming` keeps that failure at the doctor's screen where they can still delete the
+ *  exam instead. Approval itself already refuses ended exams; this is about not creating the queue
+ *  entry. The server still decides, and its 409 is what the user sees if the two ever disagree. */
+export function canResubmit(status: ExamStatus, startTime: string, now: number = Date.now()): boolean {
+  return status === 'rejected' && isUpcoming(startTime, now);
+}
+
+/** What resubmitting actually did. The route changes the status to `pending_approval` and clears
+ *  `rejection_reason`; nothing else about the exam changes, so the notice may not claim it is approved
+ *  or that its contents were checked. */
+export function resubmitNotice(title: string): string {
+  return `Resubmitted "${title}". It is back with the administrator for approval.`;
+}
+
 export function pointsValue(points: number | string): number {
   const parsed = Number(points);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -113,7 +135,7 @@ export function editOutcomeExplainer(status: ExamStatus | null): string {
   }
   if (status === 'rejected') {
     return 'Saving does not put a rejected exam back in the queue: an administrator can only approve an exam that is waiting. '
-      + 'Delete this exam and create a new one instead. ' + clears;
+      + 'Correct it, then use Resubmit to put it back in the queue. ' + clears;
   }
   if (status === null) {
     return 'Saving keeps the status this exam already has. ' + clears;
