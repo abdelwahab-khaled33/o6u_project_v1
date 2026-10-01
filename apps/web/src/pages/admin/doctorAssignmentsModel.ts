@@ -103,6 +103,21 @@ export function saveNotice(removedAssignments: number, savedSubjectIds: readonly
 }
 
 /**
+ * Which assignment editor the Users detail panel owes an account. The enrollment card covers
+ * students; this covers doctors. Every other role gets nothing from this card — an admin or a
+ * TA has no subject assignment to edit, and rendering them an empty picker would read as a
+ * claim about their teaching rather than as the absence of one.
+ */
+export type UserAssignmentSection = 'doctor-subjects' | 'ta-sections' | 'student-enrollments' | 'none';
+
+export function assignmentSectionForRole(role: string): UserAssignmentSection {
+  if (role === 'doctor') return 'doctor-subjects';
+  if (role === 'ta') return 'ta-sections';
+  if (role === 'student') return 'student-enrollments';
+  return 'none';
+}
+
+/**
  * The consequences line, stated before the boxes rather than after the save, because the decision
  * being made here is destructive in a way the UI gives no other hint of.
  *

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   ASSIGNMENT_CONSEQUENCE,
+  assignmentSectionForRole,
   buildAssignmentBody,
   canSave,
   doctorOptionLabel,
@@ -166,5 +167,26 @@ describe('ASSIGNMENT_CONSEQUENCE', () => {
     ['that emptying the last doctor of a subject leaves nobody to run its question bank', /last doctor|last one|nobody|no one/i],
   ])('states %s', (_claim, pattern) => {
     expect(ASSIGNMENT_CONSEQUENCE).toMatch(pattern);
+  });
+});
+
+describe('assignmentSectionForRole', () => {
+  // The Users detail panel showed a doctor no subjects editor at all: the enrollment card
+  // early-returns for every non-student role. This pins the fix — a doctor gets the
+  // subjects editor, every other role gets nothing from this card.
+  it('gives a doctor the subjects editor', () => {
+    expect(assignmentSectionForRole('doctor')).toBe('doctor-subjects');
+  });
+
+  it('gives no assignment section to an admin', () => {
+    expect(assignmentSectionForRole('admin')).toBe('none');
+  });
+
+  // Added when the Users panel grew display cards for TAs and students: the old assertion
+  // pinned their absence ('ta' and 'student' mapped to 'none'), and this feature deliberately
+  // changes that mapping. The absence is still pinned above for admin, the role with nothing.
+  it('gives a TA the sections display and a student the enrollments display', () => {
+    expect(assignmentSectionForRole('ta')).toBe('ta-sections');
+    expect(assignmentSectionForRole('student')).toBe('student-enrollments');
   });
 });

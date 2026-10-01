@@ -99,4 +99,13 @@ describe('exam serialization selects keep what the screens need', () => {
       'is_archived',
     );
   });
+
+  it('detail pool questions carry the review fields, so an admin can verify correctness without the bank', () => {
+    // The admin review screen reads GET /exams/:id, and admins are 403 on every question-bank
+    // route: without these fields the only correctness check available would be the bare text.
+    // The route stays owner-or-admin only, so students never see these keys.
+    for (const field of ['options', 'correct_answer', 'grade', 'image_url']) {
+      expect(Object.keys(EXAM_DETAIL_SELECT.pool_questions.include.question.select)).toContain(field);
+    }
+  });
 });

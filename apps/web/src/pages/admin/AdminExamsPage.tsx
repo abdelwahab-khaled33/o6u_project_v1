@@ -215,6 +215,9 @@ export function AdminExamsPage() {
                     <td>{formatDateTime(exam.end_time)}</td>
                     <td>
                       <div className="row-actions">
+                        <Button variant="secondary" onClick={() => navigate(`/admin/exams/${exam.id}/review`)}>
+                          Review
+                        </Button>
                         <Button variant="secondary" onClick={() => navigate(`/admin/results/${exam.id}`)}>
                           Results
                         </Button>

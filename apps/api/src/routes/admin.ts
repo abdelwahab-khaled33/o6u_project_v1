@@ -585,6 +585,56 @@ adminRouter.put('/enrollments', requirePermission('subjects.manage'), async (req
   }
 });
 
+// Read-only view of one student's enrollments for the Users detail panel. The section is
+// nullable by construction: the join is done in code over two independent reads, so an
+// enrollment with no membership renders as "no section" rather than vanishing.
+adminRouter.get(
+  '/enrollments/:studentId',
+  requirePermission('subjects.manage'),
+  requireUuidParam('studentId', 'Student not found'),
+  async (req, res, next) => {
+  try {
+    const student = await prisma.user.findUnique({
+      where: { id: req.params.studentId },
+      select: { id: true, role: true },
+    });
+    if (!student) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+    if (student.role !== 'student') {
+      return res.status(400).json({ error: 'Only students have enrollments' });
+    }
+
+    const [enrollments, memberships] = await Promise.all([
+      prisma.enrollment.findMany({
+        where: { student_id: student.id },
+        include: { subject: { select: { id: true, code: true, name: true } } },
+        orderBy: { subject: { code: 'asc' } },
+      }),
+      prisma.sectionMembership.findMany({
+        where: { student_id: student.id },
+        include: { section: { select: { id: true, name: true, subject_id: true } } },
+      }),
+    ]);
+
+    const sectionBySubject = new Map(
+      memberships.map((membership) => [
+        membership.section.subject_id,
+        { id: membership.section.id, name: membership.section.name },
+      ]),
+    );
+    return res.json({
+      student_id: student.id,
+      enrollments: enrollments.map((enrollment) => ({
+        subject: enrollment.subject,
+        section: sectionBySubject.get(enrollment.subject.id) ?? null,
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ---------------------------------------------------------------------------
 // Doctor assignments
 // ---------------------------------------------------------------------------

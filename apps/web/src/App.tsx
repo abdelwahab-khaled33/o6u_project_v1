@@ -22,6 +22,7 @@ import { ExamLivePage } from './pages/monitoring/ExamLivePage';
 import AdminLayout from './pages/admin/AdminLayout';
 import { AdminDoctorAssignmentsPage } from './pages/admin/AdminDoctorAssignmentsPage';
 import { AdminExamsPage } from './pages/admin/AdminExamsPage';
+import { AdminExamReviewPage } from './pages/admin/AdminExamReviewPage';
 import { AdminImportPage } from './pages/admin/AdminImportPage';
 import { AdminPermissionsPage } from './pages/admin/AdminPermissionsPage';
 import { AdminSectionsPage } from './pages/admin/AdminSectionsPage';
@@ -77,6 +78,7 @@ export default function App() {
               <Route path="sections" element={<AdminSectionsPage />} />
               <Route path="doctor-assignments" element={<AdminDoctorAssignmentsPage />} />
               <Route path="exams" element={<AdminExamsPage />} />
+              <Route path="exams/:examId/review" element={<AdminExamReviewPage />} />
               <Route path="results" element={<SubjectResultsPage detailsBase="/admin/results" />} />
               <Route path="results/:examId" element={<ExamResultsPage />} />
               <Route path="exams/:examId/compensate" element={<ExamCompensationPage />} />

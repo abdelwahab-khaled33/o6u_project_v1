@@ -11,6 +11,7 @@ interface ParsedUserRow {
   studentCode: string | null;
   subjectCodes: string[];
   taAssignments: { subjectCode: string; sectionNames: string[] }[];
+  sectionPlacements: { subjectId: string; sectionId: string }[];
   rawRow: number;
 }
 
@@ -27,6 +28,56 @@ export interface UserImportReport {
 }
 
 type SubjectsByCode = Map<string, string>;
+
+type SectionRow = { id: string; name: string; subject_id: string };
+
+/**
+ * A student's Sections column, in the same `CODE: name; ...` syntax the TA column uses, but
+ * with exactly one section per subject: a student sits in one section of each enrolled
+ * subject, so two names for one subject is not a choice the commit could express. Returns
+ * both the resolved placements and every reason they cannot be used; the validator reports
+ * the first reason and the parser trusts an empty error list.
+ */
+function studentSections(
+  raw: string,
+  subjectCodes: string[],
+  subjects: SubjectsByCode,
+  sections: SectionRow[],
+): { placements: { subjectId: string; sectionId: string }[]; errors: string[] } {
+  const placements: { subjectId: string; sectionId: string }[] = [];
+  const errors: string[] = [];
+  for (const assignment of parseTaAssignments(raw)) {
+    const subjectId = subjects.get(assignment.subjectCode);
+    if (!subjectId) {
+      errors.push(`Unknown subject code in Sections: "${assignment.subjectCode}"`);
+      continue;
+    }
+    if (!subjectCodes.includes(assignment.subjectCode)) {
+      errors.push(`Sections lists subject "${assignment.subjectCode}" which is not in Subjects`);
+      continue;
+    }
+    if (assignment.sectionNames.length !== 1) {
+      errors.push(
+        `Sections lists ${assignment.sectionNames.length} sections for subject "${assignment.subjectCode}": a student sits in exactly one section per subject`,
+      );
+      continue;
+    }
+    const name = assignment.sectionNames[0] as string;
+    const matches = sections.filter((section) => section.subject_id === subjectId && section.name === name);
+    if (matches.length === 0) {
+      errors.push(`Unknown section "${name}" in subject "${assignment.subjectCode}"`);
+      continue;
+    }
+    if (matches.length > 1) {
+      errors.push(
+        `Ambiguous section "${name}" in subject "${assignment.subjectCode}": ${matches.length} sections share the name, rename one first`,
+      );
+      continue;
+    }
+    placements.push({ subjectId, sectionId: (matches[0] as SectionRow).id });
+  }
+  return { placements, errors };
+}
 
 function splitList(value: string): string[] {
   return value
@@ -53,6 +104,7 @@ function parseTaAssignments(raw: string): { subjectCode: string; sectionNames: s
 function parseRows(
   raw: { cells: Record<string, string>; rowNumber: number }[],
   subjects: SubjectsByCode,
+  sections: SectionRow[],
   existing: Set<string>,
 ): { rows: ParsedUserRow[]; errors: ImportRowError[]; seen: Set<string> } {
   const rows: ParsedUserRow[] = [];
@@ -60,7 +112,7 @@ function parseRows(
   const seen = new Set<string>();
 
   for (const rawRow of raw) {
-    const reason = validateRow(rawRow.cells, subjects, seen, existing);
+    const reason = validateRow(rawRow.cells, subjects, sections, seen, existing);
     const username = rawRow.cells.Username ?? '';
     seen.add(username.toLowerCase());
 
@@ -71,6 +123,7 @@ function parseRows(
 
     const role = (rawRow.cells.Role ?? '').toLowerCase() as Role;
     const subjectsRaw = rawRow.cells.Subjects ?? '';
+    const subjectCodes = splitList(subjectsRaw);
 
     rows.push({
       username,
@@ -78,9 +131,13 @@ function parseRows(
       fullName: rawRow.cells['Full Name'] ?? rawRow.cells.full_name ?? '',
       role,
       studentCode: rawRow.cells['Student Code'] ?? rawRow.cells.student_code ?? null,
-      subjectCodes: splitList(subjectsRaw),
+      subjectCodes,
       taAssignments:
         role === 'ta' ? parseTaAssignments(rawRow.cells.Sections ?? '') : [],
+      sectionPlacements:
+        role === 'student'
+          ? studentSections(rawRow.cells.Sections ?? rawRow.cells.sections ?? '', subjectCodes, subjects, sections).placements
+          : [],
       rawRow: rawRow.rowNumber,
     });
   }
@@ -91,6 +148,7 @@ function parseRows(
 function validateRow(
   cells: Record<string, string>,
   subjects: SubjectsByCode,
+  sections: SectionRow[],
   seen: Set<string>,
   existing: Set<string>,
 ): string | null {
@@ -138,6 +196,16 @@ function validateRow(
     }
   }
 
+  if (roleRaw === 'student') {
+    const { errors } = studentSections(
+      cells.Sections ?? cells.sections ?? '',
+      subjectCodes,
+      subjects,
+      sections,
+    );
+    if (errors.length > 0) return errors[0] as string;
+  }
+
   return null;
 }
 
@@ -158,13 +226,14 @@ export async function dryRunUserImport(
   buffer: Buffer,
 ): Promise<UserImportReport> {
   const { rows } = await readFirstSheet(buffer);
-  const [allSubjects, existing] = await Promise.all([
+  const [allSubjects, allSections, existing] = await Promise.all([
     prisma.subject.findMany({ select: { id: true, code: true } }),
+    prisma.section.findMany({ select: { id: true, name: true, subject_id: true } }),
     existingUsernames(),
   ]);
   const subjects = new Map(allSubjects.map((s) => [s.code, s.id]));
 
-  const parsed = parseRows(rows, subjects, existing);
+  const parsed = parseRows(rows, subjects, allSections, existing);
   return {
     total: rows.length,
     valid: parsed.rows.length,
@@ -179,13 +248,14 @@ export async function commitUserImport(
   filename: string,
 ): Promise<UserImportReport> {
   const { rows } = await readFirstSheet(buffer);
-  const [allSubjects, existing] = await Promise.all([
+  const [allSubjects, allSections, existing] = await Promise.all([
     prisma.subject.findMany({ select: { id: true, code: true } }),
+    prisma.section.findMany({ select: { id: true, name: true, subject_id: true } }),
     existingUsernames(),
   ]);
   const subjects = new Map(allSubjects.map((s) => [s.code, s.id]));
 
-  const parsed = parseRows(rows, subjects, existing);
+  const parsed = parseRows(rows, subjects, allSections, existing);
   const report: UserImportReport = {
     total: rows.length,
     valid: parsed.rows.length,
@@ -238,7 +308,20 @@ export async function commitUserImport(
             await tx.enrollment.create({ data: { student_id: user.id, subject_id: sid } });
           }
         }
+        // A placement is the import's equivalent of one PUT /admin/enrollments: the student
+        // lands in the named section and leaves any other section of the same subject, so a
+        // re-imported row converges instead of accumulating memberships.
         await tx.sectionMembership.deleteMany({ where: { student_id: user.id } });
+        for (const placement of row.sectionPlacements) {
+          await tx.sectionMembership.create({ data: { student_id: user.id, section_id: placement.sectionId } });
+          await tx.sectionMembership.deleteMany({
+            where: {
+              student_id: user.id,
+              section_id: { not: placement.sectionId },
+              section: { subject_id: placement.subjectId },
+            },
+          });
+        }
       } else if (row.role === 'doctor') {
         const subjectIds = row.subjectCodes.map((c) => subjects.get(c)!);
         const assigned = await tx.doctorAssignment.findMany({

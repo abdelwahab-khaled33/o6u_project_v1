@@ -6,9 +6,9 @@ const { prisma, readFirstSheet } = vi.hoisted(() => {
     user: { findMany: vi.fn(), upsert: vi.fn(), update: vi.fn(), create: vi.fn() },
     subject: { findMany: vi.fn() },
     enrollment: { findMany: vi.fn(), create: vi.fn() },
-    sectionMembership: { deleteMany: vi.fn() },
+    sectionMembership: { create: vi.fn(), deleteMany: vi.fn() },
     doctorAssignment: { findMany: vi.fn(), create: vi.fn() },
-    section: { upsert: vi.fn() },
+    section: { findMany: vi.fn(), upsert: vi.fn() },
     excelImportLog: { create: vi.fn() },
   };
   // The commit is one transaction over the whole file. The transaction client is the same
@@ -19,6 +19,16 @@ const { prisma, readFirstSheet } = vi.hoisted(() => {
     $transaction: vi.fn(async (fn: (tx: typeof models) => Promise<unknown>) => fn(models)),
   };
   return { prisma, readFirstSheet };
+});
+
+const SEC_ID = 'sec-1';
+const SEC_NAME = 'Live Section A';
+
+const sectionsRow = (over: Record<string, unknown> = {}) => ({
+  id: SEC_ID,
+  name: SEC_NAME,
+  subject_id: SUBJECT_ID,
+  ...over,
 });
 
 vi.mock('../lib/prisma.js', () => ({ prisma }));
@@ -46,6 +56,7 @@ const student = (over: Record<string, string> = {}) => ({
 beforeEach(() => {
   vi.clearAllMocks();
   prisma.subject.findMany.mockResolvedValue([{ id: SUBJECT_ID, code: 'CS81143' }]);
+  prisma.section.findMany.mockResolvedValue([sectionsRow()]);
   prisma.user.upsert.mockResolvedValue({ id: 'user-1' });
   prisma.user.create.mockResolvedValue({ id: 'user-1' });
   prisma.user.findMany.mockResolvedValue([]);
@@ -242,5 +253,102 @@ describe('the commit is all or nothing', () => {
     };
     expect(created.data.can_change_password).toBe(true);
     expect(created.data.student_code).toBeNull();
+  });
+});
+
+describe('student sections in the import', () => {
+  // The Sections column used to be TA-only: a student row carrying one imported exactly like
+  // a row without it, silently dropping where the student sits. From here a student row may
+  // name one section per subject, and the dry run is where a bad one is refused.
+  it('accepts a student naming one section per subject', async () => {
+    sheet([row(student({ Sections: 'CS81143:Live Section A' }))]);
+
+    const report = await dryRunUserImport(Buffer.from('x'));
+
+    expect(report.valid).toBe(1);
+    expect(report.errorCount).toBe(0);
+  });
+
+  it('still accepts a student with no sections, exactly like before', async () => {
+    sheet([row(student())]);
+
+    const report = await dryRunUserImport(Buffer.from('x'));
+
+    expect(report.valid).toBe(1);
+    expect(report.errorCount).toBe(0);
+  });
+
+  it('refuses a section that does not exist in that subject', async () => {
+    sheet([row(student({ Sections: 'CS81143:No Such Section' }))]);
+
+    const report = await dryRunUserImport(Buffer.from('x'));
+
+    expect(report.valid).toBe(0);
+    expect(report.errorCount).toBe(1);
+    expect(report.errors[0]?.reason).toMatch(/No Such Section/);
+  });
+
+  it('refuses a Sections entry for a subject the row does not list', async () => {
+    prisma.subject.findMany.mockResolvedValue([
+      { id: SUBJECT_ID, code: 'CS81143' },
+      { id: 'sub-2', code: 'SEC4938' },
+    ]);
+    sheet([row(student({ Subjects: 'CS81143', Sections: 'SEC4938:Live Section A' }))]);
+
+    const report = await dryRunUserImport(Buffer.from('x'));
+
+    expect(report.valid).toBe(0);
+    expect(report.errorCount).toBe(1);
+    expect(report.errors[0]?.reason).toMatch(/SEC4938/);
+  });
+
+  it('refuses two sections for one subject: a student sits in exactly one', async () => {
+    sheet([row(student({ Sections: 'CS81143:Live Section A, Live Section B' }))]);
+
+    const report = await dryRunUserImport(Buffer.from('x'));
+
+    expect(report.valid).toBe(0);
+    expect(report.errorCount).toBe(1);
+  });
+
+  it('refuses an ambiguous section name shared by two sections of the subject', async () => {
+    prisma.section.findMany.mockResolvedValue([
+      sectionsRow({ id: 'sec-1' }),
+      sectionsRow({ id: 'sec-2' }),
+    ]);
+    sheet([row(student({ Sections: 'CS81143:Live Section A' }))]);
+
+    const report = await dryRunUserImport(Buffer.from('x'));
+
+    expect(report.valid).toBe(0);
+    expect(report.errorCount).toBe(1);
+    expect(report.errors[0]?.reason).toMatch(/ambiguous/i);
+  });
+
+  it('writes the membership on commit and clears the same-subject siblings', async () => {
+    sheet([row(student({ Sections: 'CS81143:Live Section A' }))]);
+
+    const report = await commitUserImport(Buffer.from('x'), 'admin-1', 'users.xlsx');
+
+    expect(report.errorCount).toBe(0);
+    expect(prisma.sectionMembership.create).toHaveBeenCalledTimes(1);
+    const created = prisma.sectionMembership.create.mock.calls.at(-1)![0] as {
+      data: { student_id: string; section_id: string };
+    };
+    expect(created.data).toEqual({ student_id: 'user-1', section_id: SEC_ID });
+    const cleared = prisma.sectionMembership.deleteMany.mock.calls.at(-1)![0] as {
+      where: { student_id: string; section: { subject_id: string } };
+    };
+    expect(cleared.where.student_id).toBe('user-1');
+    expect(cleared.where.section.subject_id).toBe(SUBJECT_ID);
+  });
+
+  it('writes no membership on commit when the row names no section', async () => {
+    sheet([row(student())]);
+
+    const report = await commitUserImport(Buffer.from('x'), 'admin-1', 'users.xlsx');
+
+    expect(report.errorCount).toBe(0);
+    expect(prisma.sectionMembership.create).not.toHaveBeenCalled();
   });
 });
