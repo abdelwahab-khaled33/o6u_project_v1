@@ -75,7 +75,7 @@ export default function Layout() {
             <NavLink
               key={item.to}
               to={item.to}
-              className={({ isActive }) => `sidebar-link${isActive ? ' is-active' : ''}`}
+              className={({ isActive }: { isActive: boolean }) => `sidebar-link${isActive ? ' is-active' : ''}`}
             >
               <NavIcon name={item.icon} />
               <span>{item.label}</span>
