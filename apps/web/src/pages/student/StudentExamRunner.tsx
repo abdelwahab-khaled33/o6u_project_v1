@@ -20,6 +20,8 @@ import {
   remainingMs,
   submitBlockedNotice,
   submitConfirmCopy,
+  timeBarColor,
+  timeFraction,
   totalPages,
   wasAutoSubmitted,
   type StudentAttempt,
@@ -71,6 +73,11 @@ export function StudentExamRunner({ exam, attempt, questions: initialQuestions, 
   const safePage = clampPage(page, pageTotal);
   const pageStart = safePage * RUNNER_PAGE_SIZE;
   const visibleQuestions = questions.slice(pageStart, pageStart + RUNNER_PAGE_SIZE);
+  const ringId = focusedId ?? visibleQuestions[0]?.id ?? null;
+  const deadlineMs = attempt.deadline_at == null ? Number.NaN : new Date(attempt.deadline_at).getTime();
+  const startedMs = attempt.started_at == null ? Number.NaN : new Date(attempt.started_at).getTime();
+  const fraction =
+    Number.isNaN(deadlineMs) || Number.isNaN(startedMs) ? null : timeFraction(remaining, deadlineMs - startedMs);
 
   const { setTop } = useExamTopbar();
   const pendingSave = Object.values(saves).some((entry) => entry?.phase === 'saving');
@@ -254,9 +261,11 @@ export function StudentExamRunner({ exam, attempt, questions: initialQuestions, 
       answered: progress.answered,
       total: progress.total,
       flagged: progress.flagged,
+      fraction,
+      barColor: fraction === null ? null : timeBarColor(fraction),
     });
     return () => setTop(null);
-  }, [setTop, exam.title, remaining, expired, shortClock, progress]);
+  }, [setTop, exam.title, remaining, expired, shortClock, progress, fraction]);
 
   return (
     <div
@@ -270,7 +279,7 @@ export function StudentExamRunner({ exam, attempt, questions: initialQuestions, 
         <aside className="lg:order-2 lg:fixed lg:right-[max(1.75rem,calc((100vw-1160px)/2+1.75rem))] lg:top-[84px] lg:z-30 lg:w-[320px]" aria-label="Question overview">
           <div className="grid gap-3 rounded-xl border border-[#dfe5f0] border-t-4 border-t-accent bg-white px-5 py-[18px] shadow-[0_12px_32px_rgb(36_52_80/10%)] lg:max-h-[calc(100vh-6.5rem)] lg:overflow-auto">
             <h3>Questions</h3>
-            <div className="grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(44px,1fr))]">
+            <div className="grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(48px,1fr))]">
               {questions.map((question, index) => {
                 const answered = question.selected_answer != null && question.selected_answer !== '';
                 const label = `Question ${index + 1}, ${answered ? 'answered' : 'not answered'}${question.is_flagged ? ', flagged' : ''}`;
@@ -278,7 +287,7 @@ export function StudentExamRunner({ exam, attempt, questions: initialQuestions, 
                   <button
                     key={question.id}
                     type="button"
-                    className={`relative min-h-[44px] rounded-[7px] border font-bold tabular-nums${answered ? ' border-[#b4c7ef] bg-[#eef4ff] text-primary-dark' : ' border-[#dfe5f0] bg-white'}${question.is_flagged ? " after:absolute after:bottom-[5px] after:left-1/2 after:h-1.5 after:w-1.5 after:-translate-x-1/2 after:rounded-full after:bg-[#b42318] after:content-['']" : ''}${focusedId === question.id ? ' outline outline-[3px] outline-[rgb(242_132_47/45%)] outline-offset-2' : ''}`}
+                    className={`relative min-h-[48px] rounded-[10px] border font-bold tabular-nums${answered ? ' border-primary-dark bg-primary-dark text-white' : ' border-[#dfe5f0] bg-white text-primary-dark'}${question.is_flagged ? " after:absolute after:right-[7px] after:top-[7px] after:h-2 after:w-2 after:rounded-full after:bg-accent after:content-['']" : ''}${ringId === question.id ? ' outline outline-2 outline-accent outline-offset-[3px]' : ''}`}
                     aria-label={label}
                     title={label}
                     onClick={() => {
@@ -291,9 +300,16 @@ export function StudentExamRunner({ exam, attempt, questions: initialQuestions, 
                 );
               })}
             </div>
-            <p className="text-[0.84rem] font-normal text-muted">
-              A filled cell is answered, a dot marks a flagged question, and a blank cell still needs an answer.
+            <p className="flex flex-wrap gap-x-3 gap-y-1 text-[0.84rem] font-normal text-muted">
+              <span><span aria-hidden="true" className="font-bold text-primary-dark">■</span> Answered</span>
+              <span><span aria-hidden="true" className="font-bold text-[#b9c6e2]">□</span> Not answered</span>
+              <span><span aria-hidden="true" className="font-bold text-accent">●</span> <span className="font-bold text-[#9a4c08]">Flagged</span></span>
             </p>
+            {progress.unanswered > 0 && (
+              <p className="rounded-[10px] bg-[#fdebd7] px-4 py-3 font-semibold text-[#8a4a12]">
+                {progress.unanswered} {progress.unanswered === 1 ? 'question still needs' : 'questions still need'} an answer before you can submit.
+              </p>
+            )}
             {pendingSave && <Spinner label="Saving answers" />}
             <Button
               className="w-full"
@@ -353,7 +369,6 @@ export function StudentExamRunner({ exam, attempt, questions: initialQuestions, 
         {visibleQuestions.map((question, position) => {
           const index = pageStart + position;
           const choices = answerChoices(question);
-          const save = saves[question.id] ?? null;
           const saveError = saveErrors[question.id];
           return (
             <li key={question.id}>
@@ -362,39 +377,20 @@ export function StudentExamRunner({ exam, attempt, questions: initialQuestions, 
                   if (node) questionRefs.current.set(question.id, node);
                   else questionRefs.current.delete(question.id);
                 }}
-                className={`grid gap-3.5 rounded-xl border bg-white p-6 shadow-[0_4px_12px_rgb(36_52_80/5%)]${question.is_flagged ? ' border-[#f2c79a]' : ' border-[#dfe5f0]'}${question.selected_answer == null ? ' border-l-4 border-l-accent' : ''}`}
+                className="grid gap-3.5 rounded-xl border border-[#dfe5f0] bg-white p-6 shadow-[0_4px_12px_rgb(36_52_80/5%)]"
               >
                 <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2.5">
                   <span className="font-extrabold text-primary-dark">Question {index + 1}</span>
                   {saveError && <span className="font-normal text-muted">{saveError}</span>}
-                  <span className="ml-auto text-[0.82rem] font-semibold text-muted">
-                    {save?.phase === 'saving' && 'Saving…'}
-                    {save?.phase === 'saved' && 'Saved'}
-                  </span>
                   <button
                     type="button"
-                    className={`ml-1 flex min-h-[44px] items-center gap-1.5 rounded-[7px] px-2 font-semibold${question.is_flagged ? ' text-[#b42318]' : ' text-muted hover:text-primary'}`}
+                    className={`ml-auto flex min-h-[40px] items-center gap-1.5 rounded-[10px] border px-3.5 font-bold${question.is_flagged ? ' border-[#f2c79a] bg-[#fff5ec] text-[#9a4c08]' : ' border-primary bg-white text-primary hover:bg-[#eef3fb]'}`}
                     onClick={() => { void toggleFlag(question); }}
                     aria-pressed={question.is_flagged}
                     aria-label={question.is_flagged ? 'Remove flag' : 'Flag for review'}
                     title={question.is_flagged ? 'Remove flag' : 'Flag for review'}
                   >
-                    <svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true">
-                      <path
-                        d="M3.5 2v12"
-                        stroke="currentColor"
-                        strokeWidth="1.6"
-                        strokeLinecap="round"
-                      />
-                      <path
-                        d="M4 2.8h8.4l-2.2 3 2.2 3H4z"
-                        fill={question.is_flagged ? 'currentColor' : 'none'}
-                        stroke="currentColor"
-                        strokeWidth="1.6"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                    {question.is_flagged && <span>Flagged</span>}
+                    <span aria-hidden="true">⚑</span> {question.is_flagged ? 'Flagged' : 'Flag'}
                   </button>
                 </div>
 
@@ -405,7 +401,7 @@ export function StudentExamRunner({ exam, attempt, questions: initialQuestions, 
                     {choices.map((choice) => (
                       <label
                         key={choice.value}
-                        className={`flex cursor-pointer items-center gap-3 rounded-[7px] border bg-white px-3.5 py-[11px] font-normal hover:border-primary [&_input]:h-[17px] [&_input]:w-[17px] [&_input]:flex-none [&_input]:accent-[#455B8A]${question.selected_answer === choice.value ? ' border-primary bg-[#eef4ff]' : ' border-[#dfe5f0]'}`}
+                        className={`flex cursor-pointer items-center gap-3 rounded-xl border bg-white px-3.5 py-[11px] font-normal hover:border-primary [&_input]:h-[17px] [&_input]:w-[17px] [&_input]:flex-none [&_input]:accent-[#455B8A]${question.selected_answer === choice.value ? ' border-primary bg-[#eef4ff]' : ' border-[#dfe5f0]'}`}
                       >
                         <input
                           type="radio"
@@ -458,26 +454,6 @@ export function StudentExamRunner({ exam, attempt, questions: initialQuestions, 
           </span>
         </nav>
       )}
-
-      <div className="flex flex-wrap items-center justify-between gap-3 px-0.5 py-1">
-        {progress.unanswered > 0 ? (
-          <p className="font-normal text-muted">
-            {progress.unanswered} {progress.unanswered === 1 ? 'question is' : 'questions are'} still blank.
-            The server will not accept a submission until every question has an answer.
-          </p>
-        ) : (
-          <p className="font-normal text-muted">Every question has an answer. You can submit whenever you are ready.</p>
-        )}
-        <Button
-          disabled={submitting || expired}
-          onClick={() => {
-            setConfirming(true);
-            setUnanswered(null);
-          }}
-        >
-          Submit exam
-        </Button>
-      </div>
         </div>
       </div>
     </div>

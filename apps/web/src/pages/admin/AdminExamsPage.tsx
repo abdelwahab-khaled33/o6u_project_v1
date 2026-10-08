@@ -1,10 +1,9 @@
 /* eslint-disable react-hooks/set-state-in-effect -- this page fetches from the API on mount and whenever a filter changes; the fetched data cannot be derived during render */
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Alert } from '../../components/ui/Alert';
 import { Button } from '../../components/ui/Button';
-import { Card } from '../../components/ui/Card';
-import { Field, Input, Select } from '../../components/ui/Field';
+import { Field, Input } from '../../components/ui/Field';
 import { Spinner } from '../../components/ui/Spinner';
 import { api } from '../../lib/api';
 import { STATUS_PILL, statusTone } from '../../lib/statusTone';
@@ -20,11 +19,82 @@ import {
   EmptyState,
   formatDateTime,
   formValue,
-  humanise,
   type AdminExam,
 } from './adminShared';
 
-type ExamTypeFilter = 'doctor_exam' | 'ta_quiz' | 'all';
+type ExamTypeFilter = 'doctor_exam' | 'ta_quiz';
+
+type ExamStatusFilter = 'pending_approval' | 'approved' | 'rejected' | '';
+
+type ShownCode = {
+  code: string;
+  expiresAt: string | null;
+  fresh: boolean;
+};
+
+function formatWindow(startTime: string, endTime: string): string {
+  const start = formatDateTime(startTime);
+  const end = formatDateTime(endTime);
+  const startDay = start.split(', ')[0];
+  const endDay = end.split(', ')[0];
+  if (startDay === endDay) {
+    const endClock = end.split(', ')[1] ?? end;
+    return `${start} – ${endClock}`;
+  }
+  return `${start} – ${end}`;
+}
+
+const TYPE_SEGMENTS: Array<{ value: ExamTypeFilter; label: string }> = [
+  { value: 'doctor_exam', label: 'Doctor exams' },
+  { value: 'ta_quiz', label: 'TA quizzes' },
+];
+
+const STATUS_SEGMENTS: Array<{ value: ExamStatusFilter; label: string }> = [
+  { value: 'pending_approval', label: 'Pending' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'rejected', label: 'Rejected' },
+  { value: '', label: 'All' },
+];
+
+function Segment<T extends string>({
+  label,
+  options,
+  value,
+  onPick,
+}: {
+  label: string;
+  options: Array<{ value: T; label: string }>;
+  value: T;
+  onPick: (value: T) => void;
+}) {
+  return (
+    <div
+      role="group"
+      aria-label={label}
+      className="flex flex-wrap gap-1 rounded-[14px] border border-[#dfe5f0] bg-white p-1.5 shadow-[0_4px_14px_rgb(36_52_80/7%)]"
+    >
+      {options.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          aria-pressed={option.value === value}
+          onClick={() => onPick(option.value)}
+          className={`rounded-[10px] px-5 py-2.5 font-semibold ${
+            option.value === value ? 'bg-primary text-white' : 'text-primary-dark hover:bg-[#eef3fb]'
+          }`}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const STATUS_PILL_LABEL: Record<string, string> = {
+  pending_approval: '⏳ Pending approval',
+  approved: '✓ Approved',
+  rejected: '✕ Rejected',
+};
 
 /**
  * The route returns the whole EXAM_DETAIL_SELECT object under `exam`. Only the expiry is read
@@ -35,19 +105,6 @@ type RegenerateResponse = {
   access_code: string;
   exam: { access_code_expires_at: string | null };
 };
-
-const STATUS_OPTIONS = [
-  { value: 'pending_approval', label: 'Pending approval' },
-  { value: 'approved', label: 'Approved' },
-  { value: 'rejected', label: 'Rejected' },
-  { value: '', label: 'All statuses' },
-];
-
-const TYPE_OPTIONS: Array<{ value: ExamTypeFilter; label: string }> = [
-  { value: 'doctor_exam', label: 'Doctor-authored exams' },
-  { value: 'ta_quiz', label: 'TA quizzes' },
-  { value: 'all', label: 'All types' },
-];
 
 function AccessCodeBox({
   label,
@@ -95,32 +152,82 @@ export function AdminExamsPage() {
   // The composed sentence is stored rather than rebuilt on each render, so what stays on screen
   // is what the rotation actually said — re-deriving it later against a later clock would
   // quietly rewrite the words underneath whoever is reading them.
-  const [rotated, setRotated] = useState<Record<string, RegenerateNotice>>({});
-  // Codes fetched back from the server survive a logout: unlike `rotated`, which lives only
-  // in this page's state, the ciphertext lives in the database and decrypts on demand.
-  const [revealed, setRevealed] = useState<Record<string, RegenerateNotice>>({});
+  // Codes fetched back from the server survive a logout: unlike this page state, the ciphertext
+  // lives in the database and decrypts on demand. `fresh` marks a code rotated in this session,
+  // which is the only case adding "replaces the old code". A null entry means the server has no
+  // code, so the strip says so instead of spinning forever.
+  const [codes, setCodes] = useState<Record<string, ShownCode | null>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [moreId, setMoreId] = useState<string | null>(null);
   // The approval itself generates the code, but an approved exam leaves the pending list on
   // refetch — so the fresh code is kept here and shown above the list instead of on the card.
   const [approvedCode, setApprovedCode] = useState<{ examId: string; title: string; notice: RegenerateNotice } | null>(null);
 
   const loadExams = useCallback(async () => {
-    const query = status ? `?status=${encodeURIComponent(status)}` : '';
     try {
-      const result = await api.get<{ exams: AdminExam[] }>(`/admin/exams${query}`);
-      setExams(typeFilter === 'all' ? result.exams : result.exams.filter((exam) => exam.type === typeFilter));
+      const result = await api.get<{ exams: AdminExam[] }>('/admin/exams');
+      setExams(result.exams);
       setError(null);
     } catch (caught) {
       setError(describeError(caught));
     } finally {
       setLoading(false);
     }
-  }, [status, typeFilter]);
+  }, []);
 
   useEffect(() => { void loadExams(); }, [loadExams]);
 
-  async function approve(exam: AdminExam) {
+  const typedExams = useMemo(
+    () => exams.filter((exam) => exam.type === typeFilter),
+    [exams, typeFilter],
+  );
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = { pending_approval: 0, approved: 0, rejected: 0 };
+    for (const exam of typedExams) {
+      if (exam.status in counts) counts[exam.status] = (counts[exam.status] ?? 0) + 1;
+    }
+    return counts;
+  }, [typedExams]);
+  const visibleExams = useMemo(
+    () => (status === '' ? typedExams : typedExams.filter((exam) => exam.status === status)),
+    [typedExams, status],
+  );
+
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') setMoreId(null);
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  useEffect(() => {
+    const missing = exams.filter((exam) => canRegenerate(exam.status) && codes[exam.id] === undefined);
+    if (missing.length === 0) return;
+    let cancelled = false;
+    void Promise.all(missing.map(async (exam) => {
+      try {
+        const result = await api.get<{ access_code: string; access_code_expires_at: string | null }>(
+          `/exams/${exam.id}/access-code`,
+        );
+        if (cancelled) return;
+        setCodes((previous) => {
+          if (previous[exam.id] !== undefined) return previous;
+          return {
+            ...previous,
+            [exam.id]: { code: result.access_code, expiresAt: result.access_code_expires_at, fresh: false },
+          };
+        });
+      } catch {
+        if (cancelled) return;
+        setCodes((previous) => (previous[exam.id] === undefined ? { ...previous, [exam.id]: null } : previous));
+      }
+    }));
+    return () => { cancelled = true; };
+  }, [exams, codes]);
+
+  async function approve(exam: AdminExam, now: number) {
     setBusyId(exam.id);
     setError(null);
     setNotice(null);
@@ -130,8 +237,13 @@ export function AdminExamsPage() {
       setNotice(`Approved ${exam.title}.`);
       await loadExams();
       try {
-        const fresh = await fetchCodeNotice(exam);
-        setApprovedCode({ examId: exam.id, title: exam.title, notice: fresh });
+        const { code, expiresAt } = await fetchCode(exam);
+        setApprovedCode({
+          examId: exam.id,
+          title: exam.title,
+          notice: regenerateNotice(code, expiresAt, formatDateTime, now),
+        });
+        setCodes((previous) => ({ ...previous, [exam.id]: { code, expiresAt, fresh: true } }));
       } catch (caught) {
         setError(describeError(caught));
       }
@@ -166,24 +278,11 @@ export function AdminExamsPage() {
     setRotatingProblem(null);
   }
 
-  async function fetchCodeNotice(exam: AdminExam): Promise<RegenerateNotice> {
+  async function fetchCode(exam: AdminExam): Promise<{ code: string; expiresAt: string | null }> {
     const result = await api.get<{ access_code: string; access_code_expires_at: string | null }>(
       `/exams/${exam.id}/access-code`,
     );
-    return regenerateNotice(result.access_code, result.access_code_expires_at, formatDateTime, Date.now());
-  }
-
-  async function showCode(exam: AdminExam) {
-    setBusyId(exam.id);
-    setError(null);
-    try {
-      const notice = await fetchCodeNotice(exam);
-      setRevealed((previous) => ({ ...previous, [exam.id]: notice }));
-    } catch (caught) {
-      setError(describeError(caught));
-    } finally {
-      setBusyId(null);
-    }
+    return { code: result.access_code, expiresAt: result.access_code_expires_at };
   }
 
   async function copyCode(examId: string, code: string) {
@@ -218,14 +317,9 @@ export function AdminExamsPage() {
         `/admin/exams/${exam.id}/access-code/regenerate`,
         body,
       );
-      setRotated((previous) => ({
+      setCodes((previous) => ({
         ...previous,
-        [exam.id]: regenerateNotice(
-          result.access_code,
-          result.exam.access_code_expires_at,
-          formatDateTime,
-          now,
-        ),
+        [exam.id]: { code: result.access_code, expiresAt: result.exam.access_code_expires_at, fresh: true },
       }));
       setRotatingId(null);
     } catch (caught) {
@@ -236,10 +330,11 @@ export function AdminExamsPage() {
   }
 
   return (
-    <Card>
+    <>
       <h2>Exams</h2>
       <p className="font-normal text-muted">
-        Doctor-authored exams need approval; TA quizzes do not and appear once a TA creates them. Rejection reasons must contain at least 3 characters after trimming.
+        Doctor-authored exams need approval; TA quizzes appear as soon as a TA creates them.
+        Rejection reasons need at least 3 characters.
       </p>
       {error && <Alert>{error}</Alert>}
       {notice && <Alert variant="success">{notice}</Alert>}
@@ -257,105 +352,157 @@ export function AdminExamsPage() {
         </div>
       )}
       <div className="mt-5 grid gap-[18px]">
-        <div className="flex flex-wrap items-end gap-3 rounded-[14px] border border-[#dfe5f0] bg-white p-4 shadow-[0_4px_14px_rgb(36_52_80/7%)]">
-          <Field label="Type" htmlFor="exam-type">
-            <Select id="exam-type" value={typeFilter} onChange={(event) => { setLoading(true); setApprovedCode(null); setTypeFilter(event.target.value as ExamTypeFilter); }}>
-              {TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </Select>
-          </Field>
-          <Field label="Status" htmlFor="exam-status">
-            <Select id="exam-status" value={status} onChange={(event) => { setLoading(true); setApprovedCode(null); setStatus(event.target.value); }}>
-              {STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </Select>
-          </Field>
+        <div className="flex flex-wrap gap-3">
+          <Segment
+            label="Exam type"
+            options={TYPE_SEGMENTS}
+            value={typeFilter}
+            onPick={(next) => {
+              setApprovedCode(null);
+              setMoreId(null);
+              setTypeFilter(next);
+            }}
+          />
+          <Segment
+            label="Exam status"
+            options={STATUS_SEGMENTS.map((option) =>
+              option.value === 'pending_approval'
+                ? { ...option, label: `Pending · ${statusCounts.pending_approval ?? 0}` }
+                : option,
+            )}
+            value={status}
+            onPick={(next) => {
+              setApprovedCode(null);
+              setMoreId(null);
+              setStatus(next);
+            }}
+          />
         </div>
         {loading ? (
           <div><Spinner label="Loading exams" /> Loading exams…</div>
-        ) : exams.length === 0 ? (
+        ) : visibleExams.length === 0 ? (
           <EmptyState>No exams found for this type and status.</EmptyState>
         ) : (
           <div className="grid gap-4">
-            {exams.map((exam) => {
-              // Read once: TypeScript cannot narrow a Record lookup keyed by a property path,
-              // so reaching for rotated[exam.id] again in the JSX would be two unchecked reads.
-              const rotation = rotated[exam.id];
-              const shown = revealed[exam.id];
-              const codeNotice = rotation ?? shown;
-              const topBorder =
-                exam.status === 'approved'
-                  ? 'border-t-[#2e9e5b]'
-                  : exam.status === 'rejected'
-                    ? 'border-t-[#b42318]'
-                    : 'border-t-accent';
+            {visibleExams.map((exam) => {
+              const entry = codes[exam.id];
+              const pending = exam.status === 'pending_approval';
               return (
                 <section
                   key={exam.id}
-                  className={`grid gap-3 rounded-xl border border-[#dfe5f0] border-t-4 ${topBorder} bg-white p-5 shadow-[0_4px_14px_rgb(36_52_80/7%)]`}
+                  className="grid gap-3 rounded-[14px] border border-[#dfe5f0] bg-white p-5 shadow-[0_4px_14px_rgb(36_52_80/7%)]"
                 >
-                  <div className="flex flex-wrap items-center gap-3">
-                    <strong className="text-[1.05rem] text-primary-dark">{exam.title}</strong>
-                    <span className={`${STATUS_PILL} ${statusTone(exam.status)}`}>{humanise(exam.status)}</span>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <strong className="text-[1.05rem] text-primary-dark">{exam.title}</strong>
+                      <span className={`${STATUS_PILL} ${statusTone(exam.status)}`}>
+                        {STATUS_PILL_LABEL[exam.status] ?? exam.status}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button variant="secondary" onClick={() => navigate(`/admin/exams/${exam.id}/review`)}>
+                        Review
+                      </Button>
+                      {exam.status === 'pending_approval' ? (
+                        <>
+                          <Button variant="dangerOutline" onClick={() => setRejectingId(exam.id)}>Reject</Button>
+                          <Button disabled={busyId === exam.id} onClick={() => { void approve(exam, Date.now()); }}>
+                            {busyId === exam.id ? 'Saving…' : 'Approve'}
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button variant="secondary" onClick={() => navigate(`/admin/results/${exam.id}`)}>
+                            Results
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            onClick={() => navigate(`/admin/exams/${exam.id}/live`)}
+                          >
+                            Monitor
+                          </Button>
+                        </>
+                      )}
+                      {!pending && (
+                      <span className="relative">
+                        <Button
+                          variant="secondary"
+                          aria-haspopup="menu"
+                          aria-expanded={moreId === exam.id}
+                          onClick={() => setMoreId(moreId === exam.id ? null : exam.id)}
+                        >
+                          More ▾
+                        </Button>
+                        {moreId === exam.id && (
+                          <>
+                            <button
+                              type="button"
+                              aria-label="Close menu"
+                              onClick={() => setMoreId(null)}
+                              className="fixed inset-0 z-30 cursor-default border-0 bg-transparent p-0"
+                            />
+                            <span
+                              role="menu"
+                              className="absolute end-0 top-[calc(100%+6px)] z-40 grid min-w-[180px] gap-1 rounded-[10px] border border-[#dfe5f0] bg-white p-1.5 shadow-[0_12px_32px_rgb(36_52_80/15%)]"
+                            >
+                              <button
+                                type="button"
+                                role="menuitem"
+                                onClick={() => { setMoreId(null); void navigate(`/admin/exams/${exam.id}/compensate`); }}
+                                className="rounded-[7px] px-3 py-2 text-left font-semibold text-primary-dark hover:bg-[#eef3fb]"
+                              >
+                                Compensate
+                              </button>
+                            </span>
+                          </>
+                        )}
+                      </span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex flex-wrap gap-x-6 gap-y-1 text-[0.9rem]">
-                    <span className="font-normal text-muted">{exam.subject.code} — {exam.subject.name}</span>
-                    <span>Owner: <strong>{exam.owner.full_name}</strong> <span className="font-normal text-muted">({humanise(exam.type)})</span></span>
-                    <span className="font-normal text-muted">{formatDateTime(exam.start_time)} – {formatDateTime(exam.end_time)}</span>
+                    <span className="font-normal text-muted">{exam.subject.code} · {exam.subject.name}</span>
+                    <span>Owner: <strong>{exam.owner.full_name}</strong></span>
+                    <span className="font-normal text-muted">{formatWindow(exam.start_time, exam.end_time)}</span>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button variant="secondary" onClick={() => navigate(`/admin/exams/${exam.id}/review`)}>
-                      Review
-                    </Button>
-                    <Button variant="secondary" onClick={() => navigate(`/admin/results/${exam.id}`)}>
-                      Results
-                    </Button>
-                    {/* Reachable while the exam is still running, which results is not (§4.5). */}
-                    <Button
-                      variant="secondary"
-                      onClick={() => navigate(`/admin/exams/${exam.id}/compensate`)}
-                    >
-                      Compensate
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      onClick={() => navigate(`/admin/exams/${exam.id}/live`)}
-                    >
-                      Monitor
-                    </Button>
-                    {canRegenerate(exam.status) && (
-                      <Button variant="secondary" onClick={() => openRotation(exam)}>
-                        Regenerate code
-                      </Button>
-                    )}
-                    {canRegenerate(exam.status) && codeNotice === undefined && (
-                      <Button
-                        variant="secondary"
-                        disabled={busyId === exam.id}
-                        onClick={() => { void showCode(exam); }}
-                      >
-                        {busyId === exam.id ? 'Loading…' : 'Show code'}
-                      </Button>
-                    )}
-                  </div>
-                  {exam.status === 'pending_approval' && (
-                    <>
-                      <div className="flex flex-wrap items-center gap-2 border-t border-[#eef1f6] pt-3">
-                        <Button disabled={busyId === exam.id} onClick={() => { void approve(exam); }}>
-                          {busyId === exam.id ? 'Saving…' : 'Approve'}
-                        </Button>
-                        <Button variant="danger" onClick={() => setRejectingId(exam.id)}>Reject</Button>
+                  {exam.status === 'pending_approval' && rejectingId === exam.id && (
+                    <form className="mt-5 grid gap-[18px]" onSubmit={(event) => { void reject(event, exam); }}>
+                      <Field label="Rejection reason (minimum 3 characters)" htmlFor={`reject-reason-${exam.id}`}>
+                        <Input id={`reject-reason-${exam.id}`} name="reason" minLength={3} required />
+                      </Field>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button variant="danger" type="submit" disabled={busyId === exam.id}>Confirm reject</Button>
+                        <Button variant="secondary" type="button" onClick={() => setRejectingId(null)}>Cancel</Button>
                       </div>
-                      {rejectingId === exam.id && (
-                        <form className="mt-5 grid gap-[18px]" onSubmit={(event) => { void reject(event, exam); }}>
-                          <Field label="Rejection reason (minimum 3 characters)" htmlFor={`reject-reason-${exam.id}`}>
-                            <Input id={`reject-reason-${exam.id}`} name="reason" minLength={3} required />
-                          </Field>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Button variant="danger" type="submit" disabled={busyId === exam.id}>Confirm reject</Button>
-                            <Button variant="secondary" type="button" onClick={() => setRejectingId(null)}>Cancel</Button>
+                    </form>
+                  )}
+                  {canRegenerate(exam.status) && (
+                    <div className="grid gap-2 rounded-xl bg-[#eef3fb] px-4 py-3">
+                      {entry === undefined ? (
+                        <p className="text-[0.85rem] font-normal text-muted">Loading access code…</p>
+                      ) : entry === null ? (
+                        <p className="text-[0.85rem] font-normal text-muted">No access code for this exam yet.</p>
+                      ) : (
+                        <>
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                            <span className="text-muted">Access code</span>
+                            <strong className="font-mono text-[1.3rem] font-extrabold tracking-[0.2em] text-primary-dark">
+                              {entry.code}
+                            </strong>
+                            <Button variant="secondary" onClick={() => { void copyCode(exam.id, entry.code); }}>
+                              {copiedId === exam.id ? 'Copied' : 'Copy'}
+                            </Button>
+                            <Button variant="secondary" onClick={() => openRotation(exam)}>
+                              Regenerate
+                            </Button>
                           </div>
-                        </form>
+                          <p className="text-[0.85rem] font-normal text-muted">
+                            {entry.expiresAt ? `Valid until ${formatDateTime(entry.expiresAt)}` : 'No expiry recorded.'}
+                            {entry.fresh ? ' · replaces the old code' : ''}
+                          </p>
+                        </>
                       )}
-                    </>
+                    </div>
                   )}
                   {canRegenerate(exam.status) && rotatingId === exam.id && (
                     <form className="mt-5 grid gap-[18px]" onSubmit={(event) => { void regenerate(event, exam); }}>
@@ -392,20 +539,12 @@ export function AdminExamsPage() {
                       </div>
                     </form>
                   )}
-                  {codeNotice !== undefined && (
-                    <AccessCodeBox
-                      label={rotation !== undefined ? 'New access code' : 'Current access code'}
-                      notice={codeNotice}
-                      copied={copiedId === exam.id}
-                      onCopy={() => { void copyCode(exam.id, codeNotice.code); }}
-                    />
-                  )}
                 </section>
               );
             })}
           </div>
         )}
       </div>
-    </Card>
+    </>
   );
 }

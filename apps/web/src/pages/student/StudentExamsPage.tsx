@@ -169,96 +169,94 @@ export function StudentExamsPage() {
 
   return (
     <div>
-      <Card>
-        <h2>My exams</h2>
-        <p className="font-normal text-muted">
-          Exams and quizzes open to you right now. A quiz is a short check from your TA; an exam is set by a
-          doctor and needs the access code your supervisor announces. Once you start, the clock cannot be
-          paused — when time runs out, your saved answers are submitted automatically.
-        </p>
-        {listError && <Alert>{listError}</Alert>}
-        <div className="mt-5 grid gap-[18px]">
-          {loading ? (
-            <div><Spinner label="Loading your exams" /> Loading your exams…</div>
-          ) : exams.length === 0 ? (
-            <EmptyState>
-              You have no exams open right now. When an exam or quiz you are registered for opens, it appears
-              here.
-            </EmptyState>
-          ) : (
-            <div className="grid items-stretch gap-5 md:grid-cols-2 xl:grid-cols-3">
-              {exams.map((exam) => {
-                const inProgress = exam.status === 'in_progress';
-                return (
-                  <article
-                    key={exam.id}
-                    className="flex flex-col gap-4 rounded-2xl border border-[#dfe5f0] bg-white p-5 shadow-[0_4px_14px_rgb(36_52_80/7%)] transition-shadow hover:shadow-[0_12px_32px_rgb(36_52_80/12%)]"
-                  >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className={`${STATUS_PILL} border-[#dfe5f0] bg-[#edf0f6] text-muted`}>
-                        {exam.type === 'ta_quiz' ? 'Quiz' : 'Exam'}
+      <h2>My exams</h2>
+      <p className="font-normal text-muted">
+        Once you start, the clock cannot be paused. When time runs out, your saved answers are
+        submitted automatically.
+      </p>
+      {listError && <Alert>{listError}</Alert>}
+      <div className="mt-5 grid gap-[18px]">
+        {loading ? (
+          <div><Spinner label="Loading your exams" /> Loading your exams…</div>
+        ) : exams.length === 0 ? (
+          <EmptyState>
+            You have no exams open right now. When an exam or quiz you are registered for opens, it appears
+            here.
+          </EmptyState>
+        ) : (
+          <div className="grid items-stretch gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {exams.map((exam) => {
+              const inProgress = exam.status === 'in_progress';
+              return (
+                <article
+                  key={exam.id}
+                  className="flex flex-col gap-3 rounded-2xl border border-[#dfe5f0] bg-white p-5 shadow-[0_4px_14px_rgb(36_52_80/7%)] transition-shadow hover:shadow-[0_12px_32px_rgb(36_52_80/12%)]"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className={`${STATUS_PILL} border-[#dfe5f0] bg-[#edf0f6] text-muted`}>
+                      {exam.type === 'ta_quiz' ? 'Quiz' : 'Exam'}
+                    </span>
+                    {inProgress ? (
+                      <span className={`${STATUS_PILL} border-[#f2c79a] bg-[#fff5ec] text-[#9a4c08]`}>
+                        In progress
                       </span>
-                      {inProgress && (
-                        <span className={`${STATUS_PILL} ${'border-[#f2c79a] bg-[#fff5ec] text-[#9a4c08]'}`}>
-                          In progress
-                        </span>
-                      )}
+                    ) : (
+                      <span className={`${STATUS_PILL} border-[#a8d7bd] bg-[#effaf3] text-[#147a47]`}>
+                        ● Open now
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="text-[1.15rem] font-bold leading-snug text-primary-dark [overflow-wrap:anywhere]">
+                    {exam.title}
+                  </h3>
+                  <p className="text-[0.85rem] font-normal text-muted">
+                    {exam.subject.code} · {exam.subject.name}
+                  </p>
+                  <dl className="grid grid-cols-3 gap-3 rounded-xl bg-[#edf0f6] px-4 py-3 text-center">
+                    <div>
+                      <dt className="text-[0.72rem] font-bold uppercase tracking-[0.05em] text-muted">Duration</dt>
+                      <dd className="font-extrabold tabular-nums text-primary-dark">{exam.duration_minutes} min</dd>
                     </div>
-                    <h3 className="text-[1.15rem] font-bold leading-snug text-primary-dark [overflow-wrap:anywhere]">
-                      {exam.title}
-                    </h3>
-                    <p className="font-normal text-muted">
-                      {exam.subject.code} — {exam.subject.name}
-                    </p>
-                    <dl className="grid grid-cols-3 gap-3 rounded-xl bg-[#edf0f6] px-4 py-3 text-center">
-                      <div>
-                        <dt className="text-[0.72rem] font-bold uppercase tracking-[0.05em] text-muted">Duration</dt>
-                        <dd className="font-extrabold tabular-nums text-primary-dark">{exam.duration_minutes} min</dd>
-                      </div>
-                      <div>
-                        <dt className="text-[0.72rem] font-bold uppercase tracking-[0.05em] text-muted">Points</dt>
-                        <dd className="font-extrabold tabular-nums text-primary-dark">
-                          {formatGrade(exam.points_per_question)}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="text-[0.72rem] font-bold uppercase tracking-[0.05em] text-muted">Ends</dt>
-                        <dd className="font-extrabold tabular-nums text-primary-dark">
-                          {formatDateTime(exam.end_time)}
-                        </dd>
-                      </div>
-                    </dl>
-                    <p className="font-normal text-muted">
-                      {formatDateTime(exam.start_time)} to {formatDateTime(exam.end_time)}
-                    </p>
-                    <div className="mt-auto">
-                      {inProgress ? (
-                        <>
-                          <p className="mb-3 font-normal text-muted">
-                            You already started this exam. Your answers are saved; resume when you are ready.
-                          </p>
-                          <Button
-                            className="w-full"
-                            disabled={startBusy === exam.id}
-                            onClick={() => { void startExam(exam, null); }}
-                          >
-                            {startBusy === exam.id ? 'Opening…' : 'Resume'}
-                          </Button>
-                        </>
-                      ) : (
-                        <Button className="w-full" onClick={() => openAttend(exam)}>
-                          Attend exam
+                    <div>
+                      <dt className="text-[0.72rem] font-bold uppercase tracking-[0.05em] text-muted">Points</dt>
+                      <dd className="font-extrabold tabular-nums text-primary-dark">
+                        {formatGrade(exam.points_per_question)}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-[0.72rem] font-bold uppercase tracking-[0.05em] text-muted">Closes</dt>
+                      <dd className="font-extrabold tabular-nums text-primary-dark">
+                        {formatDateTime(exam.end_time)}
+                      </dd>
+                    </div>
+                  </dl>
+                  <div className="mt-auto">
+                    {inProgress ? (
+                      <>
+                        <p className="mb-3 font-normal text-muted">
+                          You already started this exam. Your answers are saved; resume when you are ready.
+                        </p>
+                        <Button
+                          className="w-full"
+                          disabled={startBusy === exam.id}
+                          onClick={() => { void startExam(exam, null); }}
+                        >
+                          {startBusy === exam.id ? 'Opening…' : 'Resume'}
                         </Button>
-                      )}
-                      {startErrors[exam.id] && !activeExam && <Alert>{startErrors[exam.id]}</Alert>}
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </Card>
+                      </>
+                    ) : (
+                      <Button className="w-full" onClick={() => openAttend(exam)}>
+                        Attend exam
+                      </Button>
+                    )}
+                    {startErrors[exam.id] && !activeExam && <Alert>{startErrors[exam.id]}</Alert>}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {activeExam && (
         <div

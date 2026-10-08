@@ -20,6 +20,8 @@ import {
   remainingMs,
   submitBlockedNotice,
   submitConfirmCopy,
+  timeBarColor,
+  timeFraction,
   toStudentExam,
   toStudentQuestion,
   totalPages,
@@ -478,5 +480,41 @@ describe('toStudentExam', () => {
   it('keeps the exam status, which is how the list tells start from resume', () => {
     expect(toStudentExam(summary).status).toBe('not_started');
     expect(toStudentExam({ ...summary, status: 'in_progress' }).status).toBe('in_progress');
+  });
+});
+
+describe('timeFraction', () => {
+  it('returns null when the total span is unknown', () => {
+    expect(timeFraction(1000, 0)).toBeNull();
+    expect(timeFraction(1000, -5)).toBeNull();
+    expect(timeFraction(1000, Number.NaN)).toBeNull();
+  });
+
+  it('clamps an exhausted or overflowing clock', () => {
+    expect(timeFraction(0, 60_000)).toBe(0);
+    expect(timeFraction(-100, 60_000)).toBe(0);
+    expect(timeFraction(60_000, 60_000)).toBe(1);
+    expect(timeFraction(99_999, 60_000)).toBe(1);
+  });
+
+  it('measures the remaining share of the attempt', () => {
+    expect(timeFraction(30_000, 60_000)).toBe(0.5);
+  });
+});
+
+describe('timeBarColor', () => {
+  it('is accent orange on a full clock and danger red when time is up', () => {
+    expect(timeBarColor(1)).toBe('rgb(242, 132, 47)');
+    expect(timeBarColor(0)).toBe('rgb(180, 35, 24)');
+  });
+
+  it('blends halfway between the two ends', () => {
+    expect(timeBarColor(0.5)).toBe('rgb(211, 84, 36)');
+  });
+
+  it('clamps out-of-range and unparseable input instead of producing NaN', () => {
+    expect(timeBarColor(2)).toBe('rgb(242, 132, 47)');
+    expect(timeBarColor(-1)).toBe('rgb(180, 35, 24)');
+    expect(timeBarColor(Number.NaN)).toBe('rgb(242, 132, 47)');
   });
 });

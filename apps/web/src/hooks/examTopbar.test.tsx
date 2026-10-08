@@ -19,14 +19,40 @@ function shell(initialTop?: ExamTopbarData) {
 }
 
 describe('exam focus shell', () => {
-  it('shows the sidebar when no exam is running', () => {
+  it('shows the topbar-only shell with the university logo for students when no exam is running', () => {
     const html = shell(undefined);
-    expect(html).toContain('<aside');
-    expect(html).not.toContain('hidden sticky');
+    expect(html).not.toContain('<aside');
+    expect(html).toContain('o6u-mark.png');
     expect(html).toContain('Student workspace');
+    expect(html).toContain('Sign out');
   });
 
-  it('hides the sidebar and pins exam name, timer and counts while running', () => {
+  it('keeps the same student tree while running: no sidebar, exam name, timer and counts', () => {
+    const idle = shell(undefined);
+    const running = shell({
+      title: 'test_1',
+      timeLeft: '19:41',
+      shortClock: false,
+      expired: false,
+      answered: 0,
+      total: 3,
+      flagged: 0,
+      fraction: 0.5,
+      barColor: 'rgb(211, 84, 36)',
+    });
+    for (const html of [idle, running]) {
+      expect(html).not.toContain('<aside');
+      expect(html).toContain('grid-rows-[auto_minmax(0,1fr)]');
+    }
+    expect(running).toContain('test_1');
+    expect(running).toContain('19:41');
+    expect(running).toContain('Answered');
+    expect(running).toContain('Flagged');
+    expect(running).toContain('width:50%');
+    expect(running).toContain('rgb(211, 84, 36)');
+  });
+
+  it('omits the time bar when the attempt span is unknown', () => {
     const html = shell({
       title: 'test_1',
       timeLeft: '19:41',
@@ -35,11 +61,9 @@ describe('exam focus shell', () => {
       answered: 0,
       total: 3,
       flagged: 0,
+      fraction: null,
+      barColor: null,
     });
-    expect(html).toContain('hidden sticky');
-    expect(html).toContain('test_1');
-    expect(html).toContain('19:41');
-    expect(html).toContain('Answered');
-    expect(html).toContain('Flagged');
+    expect(html).not.toContain('transition-[width]');
   });
 });

@@ -2,13 +2,14 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react';
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   children: ReactNode;
-  variant?: 'primary' | 'secondary' | 'danger' | 'text' | 'accent';
+  variant?: 'primary' | 'secondary' | 'danger' | 'dangerOutline' | 'text' | 'accent';
 };
 
 const VARIANTS: Record<NonNullable<ButtonProps['variant']>, string> = {
   primary: 'bg-primary text-white hover:bg-primary-dark',
   secondary: 'border border-primary bg-white text-primary hover:bg-[#eef3fb]',
   danger: 'bg-[#b42318] text-white hover:bg-[#8f1c13]',
+  dangerOutline: 'border border-[#b42318] bg-white text-[#b42318] hover:bg-[#fff1f0]',
   text: 'min-h-0 bg-transparent px-1.5 py-1.5 font-semibold text-inherit',
   accent: 'bg-accent text-white hover:bg-accent-dark',
 };

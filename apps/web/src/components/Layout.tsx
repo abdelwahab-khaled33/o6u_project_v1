@@ -66,6 +66,58 @@ export default function Layout() {
   if (!user) return <Outlet />;
 
   const items = NAV_BY_ROLE[user.role];
+  // One stable tree for students with or without a running exam: the student shell never renders
+  // the sidebar, so both modes share this exact shape and differ only in header content. A
+  // different tree per mode unmounts the whole page (the d23c05f resume bug) and the exam runner
+  // dies before its first heartbeat, which reads as a reload back to the list.
+  if (user.role === 'student') {
+    return (
+      <div className="grid min-h-screen bg-[#edf0f6]">
+        <div className="grid min-w-0 grid-rows-[auto_minmax(0,1fr)]">
+          <header className="sticky top-0 z-10 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-[#dfe5f0] bg-white/90 px-7 py-3 backdrop-blur max-md:px-4 relative">
+            {examTop ? (
+              <>
+                <span className="min-w-0 truncate font-bold text-primary-dark">{examTop.title}</span>
+                <span className="ml-auto flex flex-wrap items-center gap-x-5 gap-y-1">
+                  <span className="flex items-baseline gap-2">
+                    <span className="text-[0.78rem] font-bold uppercase tracking-[0.05em] text-muted">Time left</span>
+                    <strong className={`font-extrabold tabular-nums text-[1.1rem] ${examTop.expired ? 'text-[#b42318]' : examTop.shortClock ? 'text-accent' : 'text-primary-dark'}`}>{examTop.timeLeft}</strong>
+                  </span>
+                  <span className="flex items-baseline gap-2">
+                    <span className="text-[0.78rem] font-bold uppercase tracking-[0.05em] text-muted">Answered</span>
+                    <strong className="font-extrabold tabular-nums">{examTop.answered}/{examTop.total}</strong>
+                  </span>
+                  <span className="flex items-baseline gap-2">
+                    <span className="text-[0.78rem] font-bold uppercase tracking-[0.05em] text-muted">Flagged</span>
+                    <strong className="font-extrabold tabular-nums">{examTop.flagged}</strong>
+                  </span>
+                </span>
+                {examTop.fraction !== null && examTop.barColor !== null && (
+                  <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[5px] bg-[#e3e9f4]">
+                    <span
+                      className="block h-full transition-[width] duration-1000 ease-linear"
+                      style={{ width: `${examTop.fraction * 100}%`, backgroundColor: examTop.barColor }}
+                    />
+                  </span>
+                )}
+              </>
+            ) : (
+              <>
+                <img src="/o6u-mark.png" alt="October 6 University logo" className="h-8 w-auto" />
+                <span className="font-bold text-primary-dark">O6U Exam Platform</span>
+                <span className="font-normal text-muted">Student workspace</span>
+                <span className="ml-auto flex items-center gap-3">
+                  <span className="font-semibold">{user.fullName}</span>
+                  <button type="button" onClick={logout} className="rounded-[9px] border border-primary bg-white px-4 py-2 font-semibold text-primary hover:bg-[#eef3fb]">Sign out</button>
+                </span>
+              </>
+            )}
+          </header>
+          <main className="mx-auto w-full max-w-[1160px] px-7 pb-12 pt-7 max-md:px-4 max-md:py-5"><Outlet /></main>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className={`grid min-h-screen bg-[#edf0f6] ${examTop ? '' : 'md:grid-cols-[76px_minmax(0,1fr)] lg:grid-cols-[252px_minmax(0,1fr)]'}`.trim()}>
       <aside aria-label="Primary" className={`${examTop ? 'hidden' : ''} sticky top-0 flex h-screen flex-col gap-[18px] bg-gradient-to-b from-[#304269] to-[#232f4d] px-3.5 pb-4 pt-5 text-[#e9edf7] max-md:static max-md:h-auto max-md:flex-row max-md:items-center max-md:gap-2.5 max-md:px-3 max-md:py-2.5`.trim()}>

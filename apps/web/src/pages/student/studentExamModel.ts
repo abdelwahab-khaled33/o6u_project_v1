@@ -380,6 +380,25 @@ export function clampPage(page: number, pageTotal: number): number {
   return Math.min(Math.max(0, Math.floor(page)), pageTotal - 1);
 }
 
+const TIME_BAR_START = { r: 242, g: 132, b: 47 };
+const TIME_BAR_END = { r: 180, g: 35, b: 24 };
+
+export function timeFraction(remaining: number, total: number): number | null {
+  if (!Number.isFinite(remaining) || !Number.isFinite(total) || total <= 0) return null;
+  if (remaining <= 0) return 0;
+  if (remaining >= total) return 1;
+  return remaining / total;
+}
+
+export function timeBarColor(fraction: number): string {
+  const clamped = Number.isFinite(fraction) ? Math.min(1, Math.max(0, fraction)) : 1;
+  const mix = 1 - clamped;
+  const r = Math.round(TIME_BAR_START.r + (TIME_BAR_END.r - TIME_BAR_START.r) * mix);
+  const g = Math.round(TIME_BAR_START.g + (TIME_BAR_END.g - TIME_BAR_START.g) * mix);
+  const b = Math.round(TIME_BAR_START.b + (TIME_BAR_END.b - TIME_BAR_START.b) * mix);
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
 export function submitConfirmCopy(answered: number, total: number): string {
   const unanswered = Math.max(0, total - answered);
   if (unanswered > 0) {

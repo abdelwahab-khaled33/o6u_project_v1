@@ -8,6 +8,8 @@ export type ExamTopbarData = {
   answered: number;
   total: number;
   flagged: number;
+  fraction: number | null;
+  barColor: string | null;
 };
 
 const ExamTopbarContext = createContext<{
