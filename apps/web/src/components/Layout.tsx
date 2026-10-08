@@ -68,15 +68,14 @@ export default function Layout() {
     <div className="grid min-h-screen bg-[#edf0f6] md:grid-cols-[76px_minmax(0,1fr)] lg:grid-cols-[252px_minmax(0,1fr)]">
       <aside aria-label="Primary" className="sticky top-0 flex h-screen flex-col gap-[18px] bg-gradient-to-b from-[#304269] to-[#232f4d] px-3.5 pb-4 pt-5 text-[#e9edf7] max-md:static max-md:h-auto max-md:flex-row max-md:items-center max-md:gap-2.5 max-md:px-3 max-md:py-2.5">
         <Link to={homeByRole[user.role]} className="flex flex-col items-center gap-2 px-3 pt-1 text-inherit no-underline md:justify-center">
-          <span className="grid w-full place-items-center rounded-2xl bg-white/95 px-3 py-2.5 shadow-[0_2px_8px_rgb(0_0_0/25%)]">
-            <O6ULogo size="md" />
+          <span className="grid w-full place-items-center rounded-2xl bg-white/95 px-3 py-1.5 shadow-[0_2px_8px_rgb(0_0_0/25%)]">
+            <O6ULogo size="lg" />
           </span>
-          <span className="grid text-center text-[1.02rem] font-extrabold leading-tight text-white max-md:grid md:hidden lg:grid">
+          <span className="grid text-center text-[1.1rem] font-extrabold leading-tight text-white max-md:grid md:hidden lg:grid">
             O6U Exam Platform
-            <small className="text-[0.74rem] font-semibold text-[#cdd7ee]">{workspaceByRole[user.role]}</small>
           </span>
         </Link>
-        <nav aria-label="Workspace sections" className="grid gap-1 overflow-y-auto max-md:flex max-md:flex-1 max-md:gap-1.5 max-md:overflow-x-auto">
+        <nav aria-label="Workspace sections" className="sidebar-nav grid gap-1 overflow-y-auto max-md:flex max-md:flex-1 max-md:gap-1.5 max-md:overflow-x-auto">
           {items.map((item) => (
             <NavLink
               key={item.to}
