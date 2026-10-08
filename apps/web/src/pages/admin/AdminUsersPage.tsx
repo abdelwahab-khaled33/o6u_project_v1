@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/set-state-in-effect -- this page fetches from the API on mount and whenever a filter changes; the fetched data cannot be derived during render */
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { Alert } from '../../components/ui/Alert';
 import { Button } from '../../components/ui/Button';
@@ -757,8 +757,23 @@ export function AdminUsersPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [detail, setDetail] = useState<AdminUser | null>(null);
-  const [resetTarget, setResetTarget] = useState<AdminUser | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const detailRef = useRef<HTMLDivElement>(null);
+
+  const detailId = detail?.id;
+  useEffect(() => {
+    if (!detailId) return;
+    const target = detailRef.current;
+    if (!target) return;
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const fallback = window.setTimeout(() => {
+      const rect = target.getBoundingClientRect();
+      if (rect.top < -40 || rect.top > window.innerHeight) {
+        target.scrollIntoView({ behavior: 'instant' as ScrollBehavior, block: 'start' });
+      }
+    }, 650);
+    return () => window.clearTimeout(fallback);
+  }, [detailId]);
 
   const loadStructure = useCallback(async () => {
     const [subjectResult, sectionResult] = await Promise.all([
@@ -811,6 +826,7 @@ export function AdminUsersPage() {
   function applyFilters(next: Filters) {
     setLoading(true);
     setPage(1);
+    setDetail(null);
     setFilters(next);
   }
 
@@ -891,14 +907,16 @@ export function AdminUsersPage() {
         <CreateUserCard subjects={subjects} sections={sections} onCreated={() => { void refreshAll(); }} />
 
         {detail && (
-          <UserDetailCard
-            key={detail.id}
-            user={detail}
-            subjects={subjects}
-            sections={sections}
-            onSaved={handleSaved}
-            onClose={() => setDetail(null)}
-          />
+          <div ref={detailRef} className="scroll-mt-24">
+            <UserDetailCard
+              key={detail.id}
+              user={detail}
+              subjects={subjects}
+              sections={sections}
+              onSaved={handleSaved}
+              onClose={() => setDetail(null)}
+            />
+          </div>
         )}
 
         {loading ? (
@@ -928,10 +946,10 @@ export function AdminUsersPage() {
                     <td>{user.student_code ?? '—'}</td>
                     <td>{user.is_active ? 'Yes' : 'No'}</td>
                     <td>{formatDateTime(user.created_at)}</td>
-                    <td>
-                      <div className="table-actions flex flex-wrap items-center gap-2">
-                        <Button variant="secondary" onClick={() => { setDetail(user); setResetTarget(null); }}>Open</Button>
-                        <Button variant="secondary" onClick={() => { setResetTarget(user); setDetail(null); }}>Reset password</Button>
+                    <td className="whitespace-nowrap">
+                      <div className="table-actions flex flex-nowrap items-center gap-2">
+                        <Button variant="secondary" onClick={() => { setDetail(user); }}>Open</Button>
+                        <span className="mx-1 h-6 w-px flex-none bg-[#dfe5f0]" aria-hidden="true" />
                         <Button
                           variant={user.is_active ? 'danger' : 'primary'}
                           disabled={busyId === user.id}
@@ -957,9 +975,6 @@ export function AdminUsersPage() {
           </>
         )}
 
-        {resetTarget && (
-          <ResetPasswordCard user={resetTarget} onReset={() => { void refreshAll(); }} />
-        )}
       </div>
     </Card>
   );
