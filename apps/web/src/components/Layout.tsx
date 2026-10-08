@@ -67,11 +67,11 @@ export default function Layout() {
   return (
     <div className="grid min-h-screen bg-[#edf0f6] md:grid-cols-[76px_minmax(0,1fr)] lg:grid-cols-[252px_minmax(0,1fr)]">
       <aside aria-label="Primary" className="sticky top-0 flex h-screen flex-col gap-[18px] bg-gradient-to-b from-[#304269] to-[#232f4d] px-3.5 pb-4 pt-5 text-[#e9edf7] max-md:static max-md:h-auto max-md:flex-row max-md:items-center max-md:gap-2.5 max-md:px-3 max-md:py-2.5">
-        <Link to={homeByRole[user.role]} className="flex items-center gap-3 px-2.5 py-1 text-inherit no-underline max-md:p-0 md:justify-center lg:justify-start">
-          <span className="grid flex-none place-items-center rounded-[10px] bg-white px-2 py-1.5 shadow-[0_2px_8px_rgb(0_0_0/25%)]">
+        <Link to={homeByRole[user.role]} className="flex flex-col items-center gap-2 px-2 py-2 text-inherit no-underline md:justify-center">
+          <span className="grid h-14 w-14 flex-none place-items-center overflow-hidden rounded-full bg-white shadow-[0_2px_8px_rgb(0_0_0/25%)]">
             <O6ULogo size="sm" />
           </span>
-          <span className="grid text-[1.02rem] font-extrabold leading-tight text-white max-md:grid md:hidden lg:grid">
+          <span className="grid text-center text-[1.02rem] font-extrabold leading-tight text-white max-md:grid md:hidden lg:grid">
             O6U Exam Platform
             <small className="text-[0.74rem] font-semibold text-[#cdd7ee]">{workspaceByRole[user.role]}</small>
           </span>
@@ -83,8 +83,8 @@ export default function Layout() {
               to={item.to}
               className={({ isActive }: { isActive: boolean }) =>
                 isActive
-                  ? 'flex items-center gap-3 rounded-[10px] bg-accent px-3 py-2.5 text-[0.94rem] font-bold text-white no-underline shadow-[0_4px_12px_rgb(242_132_47/45%)] transition-colors max-md:whitespace-nowrap md:justify-center md:p-3 lg:justify-start'
-                  : 'flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-[0.94rem] font-semibold text-[#dbe3f4] no-underline transition-colors hover:bg-white/15 hover:text-white max-md:whitespace-nowrap md:justify-center md:p-3 lg:justify-start'
+                  ? 'flex items-center gap-3 rounded-none border-b-2 border-accent bg-white/5 px-3 py-2.5 text-[0.94rem] font-bold text-white no-underline transition-colors max-md:whitespace-nowrap md:justify-center md:p-3 lg:justify-start'
+                  : 'flex items-center gap-3 rounded-[10px] border-b-2 border-transparent px-3 py-2.5 text-[0.94rem] font-semibold text-[#dbe3f4] no-underline transition-colors hover:bg-white/10 hover:text-white max-md:whitespace-nowrap md:justify-center md:p-3 lg:justify-start'
               }
             >
               <NavIcon name={item.icon} />
