@@ -20,6 +20,8 @@
   },
   "overrides": {
     "deepmerge-ts": "8.0.2",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
     "uuid": "^11.1.1"
   }
 }
