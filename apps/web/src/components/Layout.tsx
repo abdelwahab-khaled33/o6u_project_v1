@@ -53,7 +53,7 @@ const ICONS: Record<string, string> = {
 
 function NavIcon({ name }: { name: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="h-[19px] w-[19px] flex-none opacity-85">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="h-[19px] w-[19px] flex-none opacity-100">
       <path d={ICONS[name] ?? ICONS.file} />
     </svg>
   );
@@ -68,10 +68,12 @@ export default function Layout() {
     <div className="grid min-h-screen bg-[#edf0f6] md:grid-cols-[76px_minmax(0,1fr)] lg:grid-cols-[252px_minmax(0,1fr)]">
       <aside aria-label="Primary" className="sticky top-0 flex h-screen flex-col gap-[18px] bg-gradient-to-b from-[#304269] to-[#232f4d] px-3.5 pb-4 pt-5 text-[#e9edf7] max-md:static max-md:h-auto max-md:flex-row max-md:items-center max-md:gap-2.5 max-md:px-3 max-md:py-2.5">
         <Link to={homeByRole[user.role]} className="flex items-center gap-3 px-2.5 py-1 text-inherit no-underline max-md:p-0 md:justify-center lg:justify-start">
-          <O6ULogo size="sm" />
-          <span className="grid text-[1.02rem] font-bold leading-tight max-md:grid md:hidden lg:grid">
+          <span className="grid flex-none place-items-center rounded-[10px] bg-white px-2 py-1.5 shadow-[0_2px_8px_rgb(0_0_0/25%)]">
+            <O6ULogo size="sm" />
+          </span>
+          <span className="grid text-[1.02rem] font-extrabold leading-tight text-white max-md:grid md:hidden lg:grid">
             O6U Exam Platform
-            <small className="text-[0.74rem] font-semibold text-[#b9c4de]">{workspaceByRole[user.role]}</small>
+            <small className="text-[0.74rem] font-semibold text-[#cdd7ee]">{workspaceByRole[user.role]}</small>
           </span>
         </Link>
         <nav aria-label="Workspace sections" className="grid gap-1 overflow-y-auto max-md:flex max-md:flex-1 max-md:gap-1.5 max-md:overflow-x-auto">
@@ -80,9 +82,9 @@ export default function Layout() {
               key={item.to}
               to={item.to}
               className={({ isActive }: { isActive: boolean }) =>
-                `flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-[0.94rem] font-semibold text-[#c9d3e9] no-underline hover:bg-white/10 hover:text-white max-md:whitespace-nowrap md:justify-center md:p-3 lg:justify-start ${
-                  isActive ? 'bg-white/10 text-white shadow-[inset_3px_0_0_#F2842F]' : ''
-                }`
+                isActive
+                  ? 'flex items-center gap-3 rounded-[10px] bg-accent px-3 py-2.5 text-[0.94rem] font-bold text-white no-underline shadow-[0_4px_12px_rgb(242_132_47/45%)] transition-colors max-md:whitespace-nowrap md:justify-center md:p-3 lg:justify-start'
+                  : 'flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-[0.94rem] font-semibold text-[#dbe3f4] no-underline transition-colors hover:bg-white/15 hover:text-white max-md:whitespace-nowrap md:justify-center md:p-3 lg:justify-start'
               }
             >
               <NavIcon name={item.icon} />
@@ -102,13 +104,11 @@ export default function Layout() {
             <NavLink to="/account/change-password" className="text-[0.85rem] font-semibold text-[#dbe3f4]">Account</NavLink>
             <button type="button" onClick={logout} className="rounded-lg border border-white/25 bg-transparent px-3 py-1.5 text-[0.85rem] font-semibold text-white hover:bg-white/10">Sign out</button>
           </div>
-          <p className="px-1.5 text-[0.72rem] font-medium text-[#b9c4de] md:hidden lg:block">October 6 University · Hotline 16704</p>
         </div>
       </aside>
       <div className="grid min-w-0 grid-rows-[auto_minmax(0,1fr)]">
         <header className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-[#dfe5f0] bg-white/90 px-7 py-3.5 backdrop-blur max-md:px-4 max-md:py-3">
           <span className="font-bold text-primary-dark">{workspaceByRole[user.role]}</span>
-          <span className="flex items-baseline gap-2 text-[0.88rem] font-semibold text-muted">{user.fullName}<small className="capitalize">{user.role}</small></span>
         </header>
         <main className="mx-auto w-full max-w-[1160px] px-7 pb-12 pt-7 max-md:px-4 max-md:py-5"><Outlet /></main>
       </div>
