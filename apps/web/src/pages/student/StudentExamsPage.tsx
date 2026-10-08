@@ -42,9 +42,10 @@ export function StudentExamsPage() {
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
 
-  const [codes, setCodes] = useState<Record<string, string>>({});
   const [startErrors, setStartErrors] = useState<Record<string, string | null>>({});
   const [startBusy, setStartBusy] = useState<string | null>(null);
+  const [activeExam, setActiveExam] = useState<StudentExamSummary | null>(null);
+  const [modalCode, setModalCode] = useState('');
 
   const loadExams = useCallback(async () => {
     setLoading(true);
@@ -62,6 +63,21 @@ export function StudentExamsPage() {
   useEffect(() => {
     void loadExams();
   }, [loadExams]);
+
+  useEffect(() => {
+    if (!activeExam) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setActiveExam(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [activeExam]);
+
+  function openAttend(exam: StudentExamSummary) {
+    setActiveExam(exam);
+    setModalCode('');
+    setStartErrors((current) => ({ ...current, [exam.id]: null }));
+  }
 
   async function startExam(exam: StudentExamSummary, code: string | null) {
     if (startBusy === exam.id) return;
@@ -149,6 +165,8 @@ export function StudentExamsPage() {
     );
   }
 
+  const modalProblem = accessCodeInputProblem(modalCode);
+
   return (
     <div>
       <Card>
@@ -168,86 +186,150 @@ export function StudentExamsPage() {
               here.
             </EmptyState>
           ) : (
-            exams.map((exam) => {
-              const code = codes[exam.id] ?? '';
-              const codeProblem = accessCodeInputProblem(code);
-              return (
-                <section key={exam.id} className="grid items-start gap-x-[22px] gap-y-3.5 rounded-xl border border-[#dfe5f0] bg-white p-4 md:grid-cols-[minmax(0,1fr)_minmax(260px,auto)]">
-                  <div className="grid min-w-0 gap-1">
+            <div className="grid items-stretch gap-5 md:grid-cols-2 xl:grid-cols-3">
+              {exams.map((exam) => {
+                const inProgress = exam.status === 'in_progress';
+                return (
+                  <article
+                    key={exam.id}
+                    className="flex flex-col gap-4 rounded-2xl border border-[#dfe5f0] bg-white p-5 shadow-[0_4px_14px_rgb(36_52_80/7%)] transition-shadow hover:shadow-[0_12px_32px_rgb(36_52_80/12%)]"
+                  >
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="max-w-[460px] [overflow-wrap:anywhere]"><strong>{exam.title}</strong></span>
-                      <span className={`${STATUS_PILL} border-[#dfe5f0] bg-[#edf0f6] text-muted`}>{exam.type === 'ta_quiz' ? 'Quiz' : 'Exam'}</span>
+                      <span className={`${STATUS_PILL} border-[#dfe5f0] bg-[#edf0f6] text-muted`}>
+                        {exam.type === 'ta_quiz' ? 'Quiz' : 'Exam'}
+                      </span>
+                      {inProgress && (
+                        <span className={`${STATUS_PILL} ${'border-[#f2c79a] bg-[#fff5ec] text-[#9a4c08]'}`}>
+                          In progress
+                        </span>
+                      )}
                     </div>
-                    <div className="font-normal text-muted">
+                    <h3 className="text-[1.15rem] font-bold leading-snug text-primary-dark [overflow-wrap:anywhere]">
+                      {exam.title}
+                    </h3>
+                    <p className="font-normal text-muted">
                       {exam.subject.code} — {exam.subject.name}
-                    </div>
-                    <div className="font-normal text-muted">
-                      {formatDateTime(exam.start_time)} to {formatDateTime(exam.end_time)} · {exam.duration_minutes}
-                      {' '}min · {formatGrade(exam.points_per_question)} points per question
-                    </div>
-                  </div>
-
-                  <div className="grid min-w-0 justify-items-start gap-2">
-                    {exam.status === 'in_progress' ? (
-                      <>
-                        <p className="font-normal text-muted">
-                          You already started this exam. Your answers are saved; resume when you are ready.
-                        </p>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Button disabled={startBusy === exam.id} onClick={() => { void startExam(exam, null); }}>
+                    </p>
+                    <dl className="grid grid-cols-3 gap-3 rounded-xl bg-[#edf0f6] px-4 py-3 text-center">
+                      <div>
+                        <dt className="text-[0.72rem] font-bold uppercase tracking-[0.05em] text-muted">Duration</dt>
+                        <dd className="font-extrabold tabular-nums text-primary-dark">{exam.duration_minutes} min</dd>
+                      </div>
+                      <div>
+                        <dt className="text-[0.72rem] font-bold uppercase tracking-[0.05em] text-muted">Points</dt>
+                        <dd className="font-extrabold tabular-nums text-primary-dark">
+                          {formatGrade(exam.points_per_question)}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-[0.72rem] font-bold uppercase tracking-[0.05em] text-muted">Ends</dt>
+                        <dd className="font-extrabold tabular-nums text-primary-dark">
+                          {formatDateTime(exam.end_time)}
+                        </dd>
+                      </div>
+                    </dl>
+                    <p className="font-normal text-muted">
+                      {formatDateTime(exam.start_time)} to {formatDateTime(exam.end_time)}
+                    </p>
+                    <div className="mt-auto">
+                      {inProgress ? (
+                        <>
+                          <p className="mb-3 font-normal text-muted">
+                            You already started this exam. Your answers are saved; resume when you are ready.
+                          </p>
+                          <Button
+                            className="w-full"
+                            disabled={startBusy === exam.id}
+                            onClick={() => { void startExam(exam, null); }}
+                          >
                             {startBusy === exam.id ? 'Opening…' : 'Resume'}
                           </Button>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Input
-                            className="w-[10.5em] font-mono uppercase tracking-[0.1em]"
-                            type="text"
-                            inputMode="text"
-                            autoComplete="off"
-                            spellCheck={false}
-                            maxLength={6}
-                            placeholder="Access code"
-                            aria-label={`Access code for ${exam.title}`}
-                            value={code}
-                            onChange={(event) => {
-                              const normalised = normaliseAccessCode(event.target.value);
-                              setCodes((current) => ({ ...current, [exam.id]: normalised }));
-                              setStartErrors((current) => ({ ...current, [exam.id]: null }));
-                            }}
-                            onKeyDown={(event) => {
-                              if (event.key === 'Enter') {
-                                event.preventDefault();
-                                void startExam(exam, code);
-                              }
-                            }}
-                          />
-                          <Button
-                            disabled={startBusy === exam.id || codeProblem !== null}
-                            onClick={() => { void startExam(exam, code); }}
-                          >
-                            {startBusy === exam.id ? 'Starting…' : 'Start'}
-                          </Button>
-                        </div>
-                        {codeProblem != null && code !== '' ? (
-                          <p className="font-normal text-muted">{codeProblem}</p>
-                        ) : (
-                          <p className="font-normal text-muted">
-                            Your supervisor announces the 6-character access code when this exam opens.
-                          </p>
-                        )}
-                      </>
-                    )}
-                    {startErrors[exam.id] && <Alert>{startErrors[exam.id]}</Alert>}
-                  </div>
-                </section>
-              );
-            })
+                        </>
+                      ) : (
+                        <Button className="w-full" onClick={() => openAttend(exam)}>
+                          Attend exam
+                        </Button>
+                      )}
+                      {startErrors[exam.id] && !activeExam && <Alert>{startErrors[exam.id]}</Alert>}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
           )}
         </div>
       </Card>
+
+      {activeExam && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-primary-ink/60 p-4 backdrop-blur-sm"
+          onClick={() => setActiveExam(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="attend-exam-title"
+            onClick={(event) => event.stopPropagation()}
+            className="w-full max-w-[460px] rounded-2xl border border-[#dfe5f0] border-t-[5px] border-t-accent bg-white p-6 shadow-[0_12px_32px_rgb(36_52_80/20%)]"
+          >
+            <h2 id="attend-exam-title">{activeExam.title}</h2>
+            <p className="mt-1 font-normal text-muted">
+              {activeExam.subject.code} — {activeExam.subject.name} ·{' '}
+              {activeExam.type === 'ta_quiz' ? 'Quiz' : 'Exam'} · {activeExam.duration_minutes} min ·{' '}
+              {formatGrade(activeExam.points_per_question)} points per question
+            </p>
+            <p className="mt-2 font-normal text-muted">
+              {formatDateTime(activeExam.start_time)} to {formatDateTime(activeExam.end_time)}
+            </p>
+            <form
+              className="mt-5 grid gap-[18px]"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void startExam(activeExam, modalCode);
+              }}
+            >
+              <div className="grid gap-[7px] text-[0.94rem] font-semibold text-[#1f2430]">
+                <label htmlFor="attend-access-code">Access code</label>
+                <Input
+                  id="attend-access-code"
+                  className="text-center font-mono uppercase tracking-[0.2em]"
+                  type="text"
+                  inputMode="text"
+                  autoComplete="off"
+                  spellCheck={false}
+                  maxLength={6}
+                  placeholder="••••••"
+                  value={modalCode}
+                  autoFocus
+                  onChange={(event) => {
+                    setModalCode(normaliseAccessCode(event.target.value));
+                    setStartErrors((current) => ({ ...current, [activeExam.id]: null }));
+                  }}
+                />
+              </div>
+              {modalProblem != null && modalCode !== '' ? (
+                <p className="font-normal text-muted">{modalProblem}</p>
+              ) : (
+                <p className="font-normal text-muted">
+                  Your supervisor announces the 6-character access code when this exam opens.
+                </p>
+              )}
+              {startErrors[activeExam.id] && <Alert>{startErrors[activeExam.id]}</Alert>}
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <Button variant="secondary" type="button" onClick={() => setActiveExam(null)}>
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={startBusy === activeExam.id || modalProblem !== null}
+                >
+                  {startBusy === activeExam.id ? 'Starting…' : 'Confirm and start'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
