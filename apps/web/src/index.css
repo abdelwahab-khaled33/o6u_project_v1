@@ -66,13 +66,28 @@
    repo-wide at one tidy size without touching page logic. */
 td .table-actions,
 th .table-actions {
-  gap: 6px;
+  column-gap: 12px;
+  row-gap: 8px;
 }
 td .table-actions > button,
 th .table-actions > button {
   min-height: 34px;
   padding: 4px 12px;
   font-size: 0.85rem;
+}
+/* A destructive action that sits last in its row is pushed to the far edge,
+   so a stray click lands on a safe button. Scoped to :last-child on purpose:
+   confirm forms put the destructive button first with Cancel last, and their
+   order must not move. */
+td .table-actions > button.bg-\[\#b42318\]:last-child,
+th .table-actions > button.bg-\[\#b42318\]:last-child {
+  margin-inline-start: auto;
+}
+/* One cell often stacks several action groups (navigate / decide /
+   regenerate): give the stack vertical rhythm. */
+td > .table-actions + *,
+td > * + .table-actions {
+  margin-top: 10px;
 }
 
 :focus-visible {
