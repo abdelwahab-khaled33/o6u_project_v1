@@ -2,22 +2,27 @@ import { describe, expect, it } from 'vitest';
 
 import {
   FORBIDDEN_STUDENT_KEYS,
+  RUNNER_PAGE_SIZE,
   accessCodeInputProblem,
   accessCodeProblem,
   answerChoices,
   answeredIds,
+  clampPage,
   clockOffsetMs,
   examRunProblem,
   flagProblem,
   formatCountdown,
   isTimeUp,
   normaliseAccessCode,
+  pageOfIndex,
   pointsPerQuestion,
   progressSummary,
   remainingMs,
   submitBlockedNotice,
+  submitConfirmCopy,
   toStudentExam,
   toStudentQuestion,
+  totalPages,
   unansweredIds,
   wasAutoSubmitted,
   type StudentQuestion,
@@ -388,6 +393,51 @@ describe('pointsPerQuestion', () => {
 
   it('falls back to zero for a value that is not a number', () => {
     expect(pointsPerQuestion('n/a')).toBe(0);
+  });
+});
+
+describe('runner pagination', () => {
+  it('keeps five questions per page', () => {
+    expect(RUNNER_PAGE_SIZE).toBe(5);
+  });
+
+  it('counts pages with a partial last page', () => {
+    expect(totalPages(0)).toBe(1);
+    expect(totalPages(4)).toBe(1);
+    expect(totalPages(5)).toBe(1);
+    expect(totalPages(6)).toBe(2);
+    expect(totalPages(11)).toBe(3);
+  });
+
+  it('maps a question index to its page', () => {
+    expect(pageOfIndex(0)).toBe(0);
+    expect(pageOfIndex(4)).toBe(0);
+    expect(pageOfIndex(5)).toBe(1);
+    expect(pageOfIndex(10)).toBe(2);
+  });
+
+  it('clamps a page into range', () => {
+    expect(clampPage(0, 3)).toBe(0);
+    expect(clampPage(5, 3)).toBe(2);
+    expect(clampPage(-1, 3)).toBe(0);
+  });
+});
+
+describe('submitConfirmCopy', () => {
+  it('states every question is answered when nothing is blank', () => {
+    expect(submitConfirmCopy(4, 4)).toBe('You have answered 4 of 4 questions. Every question is answered.');
+  });
+
+  it('names the blank count and the refusal for several blanks', () => {
+    expect(submitConfirmCopy(2, 4)).toBe(
+      'You have answered 2 of 4 questions. 2 questions are still blank, so the server will refuse the submission until you answer them.',
+    );
+  });
+
+  it('uses the singular for one blank question', () => {
+    expect(submitConfirmCopy(3, 4)).toBe(
+      'You have answered 3 of 4 questions. 1 question is still blank, so the server will refuse the submission until you answer it.',
+    );
   });
 });
 

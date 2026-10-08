@@ -1,22 +1,26 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Alert } from '../../components/ui/Alert';
 import { Button } from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Spinner';
 import { api } from '../../lib/api';
-import { STATUS_PILL } from '../../lib/statusTone';
 import { useExamTopbar } from '../../hooks/examTopbar';
 import { messageFrom } from '../admin/adminShared';
 import {
+  RUNNER_PAGE_SIZE,
   answerChoices,
+  clampPage,
   clockOffsetMs,
   examRunProblem,
   flagProblem,
   formatCountdown,
   isTimeUp,
+  pageOfIndex,
   progressSummary,
   remainingMs,
   submitBlockedNotice,
+  submitConfirmCopy,
+  totalPages,
   wasAutoSubmitted,
   type StudentAttempt,
   type StudentExamSummary,
@@ -53,15 +57,20 @@ export function StudentExamRunner({ exam, attempt, questions: initialQuestions, 
   const [unanswered, setUnanswered] = useState<UnansweredNotice | null>(null);
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [sessionNotice, setSessionNotice] = useState<string | null>(null);
-  const [fullscreen, setFullscreen] = useState(false);
+  const [page, setPage] = useState(0);
 
   const submittingRef = useRef(false);
   const deadlineHandledRef = useRef(false);
   const questionRefs = useRef(new Map<string, HTMLElement>());
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   const remaining = remainingMs(attempt.deadline_at, offsetMs, now);
   const expired = attempt.deadline_at != null && isTimeUp(remaining);
   const progress = useMemo(() => progressSummary(questions), [questions]);
+  const pageTotal = totalPages(questions.length, RUNNER_PAGE_SIZE);
+  const safePage = clampPage(page, pageTotal);
+  const pageStart = safePage * RUNNER_PAGE_SIZE;
+  const visibleQuestions = questions.slice(pageStart, pageStart + RUNNER_PAGE_SIZE);
 
   const { setTop } = useExamTopbar();
   const pendingSave = Object.values(saves).some((entry) => entry?.phase === 'saving');
@@ -69,14 +78,6 @@ export function StudentExamRunner({ exam, attempt, questions: initialQuestions, 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), TICK_MS);
     return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    function onFullscreenChange() {
-      setFullscreen(document.fullscreenElement != null);
-    }
-    document.addEventListener('fullscreenchange', onFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
   }, []);
 
   // FR-31: the timer cannot be paused by the student, so nothing here can stop it. The only thing the
@@ -97,6 +98,16 @@ export function StudentExamRunner({ exam, attempt, questions: initialQuestions, 
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- heartbeat cadence must not restart on every render
   }, [expired, submitting]);
+
+  useEffect(() => {
+    if (!confirming) return;
+    dialogRef.current?.focus();
+    function onKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') setConfirming(false);
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [confirming]);
 
   useEffect(() => {
     function warnOnLeave(event: BeforeUnloadEvent) {
@@ -165,15 +176,18 @@ export function StudentExamRunner({ exam, attempt, questions: initialQuestions, 
   }
 
   function focusFirstUnanswered() {
-    const first = questions.find((question) => !question.selected_answer);
+    const firstIndex = questions.findIndex((question) => !question.selected_answer);
+    if (firstIndex < 0) return;
+    const first = questions[firstIndex];
     if (!first) return;
+    setPage(pageOfIndex(firstIndex, RUNNER_PAGE_SIZE));
     setFocusedId(first.id);
-    questionRefs.current.get(first.id)?.scrollIntoView({ block: 'center' });
-    questionRefs.current
-      .get(first.id)
-      ?.querySelector<HTMLInputElement>('input[type="radio"]')
-      ?.focus();
   }
+
+  useEffect(() => {
+    if (focusedId == null) return;
+    questionRefs.current.get(focusedId)?.scrollIntoView({ block: 'center' });
+  }, [focusedId, safePage]);
 
   async function chooseAnswer(question: StudentQuestion, selectedAnswer: string) {
     const previous = question.selected_answer;
@@ -229,15 +243,6 @@ export function StudentExamRunner({ exam, attempt, questions: initialQuestions, 
     }
   }
 
-  async function enterFullscreen() {
-    try {
-      await document.documentElement.requestFullscreen();
-      setFullscreen(true);
-    } catch {
-      setSessionNotice('This browser would not go fullscreen. The exam still works, but keep this window alone.');
-    }
-  }
-
   const shortClock = remaining > 0 && remaining <= SHORT_CLOCK_MS;
 
   useEffect(() => {
@@ -255,66 +260,54 @@ export function StudentExamRunner({ exam, attempt, questions: initialQuestions, 
 
   return (
     <div
-      className="grid select-none gap-[22px]"
+      className="select-none"
       onCopy={(event) => event.preventDefault()}
       onCut={(event) => event.preventDefault()}
       onPaste={(event) => event.preventDefault()}
       onContextMenu={(event) => event.preventDefault()}
     >
-      <div className="sticky top-3 z-20 grid items-center gap-x-[22px] gap-y-2 rounded-xl border border-[#dfe5f0] border-t-4 border-t-accent bg-white p-4 shadow-[0_12px_32px_rgb(36_52_80/10%)] [grid-template-columns:minmax(0,1fr)_auto] max-md:grid-cols-1">
-        <div className="grid min-w-0 gap-[3px] text-[1.05rem] font-bold">
-          <strong>{exam.title}</strong>
-          <span className="font-normal text-muted">
-            {exam.subject.code} — {exam.subject.name}
-          </span>
-        </div>
-
-        <div className="grid min-w-[150px] gap-0.5 text-right max-md:text-left">
-          <span className="text-[0.8rem] font-bold uppercase tracking-[0.05em] text-muted">Time left</span>
-          <span
-            className={`font-extrabold tabular-nums leading-none tracking-wide text-primary-dark${shortClock ? ' text-accent' : ''}${expired ? ' text-[#b42318]' : ''}`}
-            role="timer"
-            aria-live="off"
-            aria-label={`${formatCountdown(remaining)} remaining`}
-          >
-            {expired ? 'Time is up' : formatCountdown(remaining)}
-          </span>
-        </div>
-
-        <div className="flex flex-wrap gap-x-[26px] gap-y-2 [grid-column:1/-1]">
-          <div className="flex items-baseline gap-2">
-            <span className="text-[0.8rem] font-bold uppercase tracking-[0.05em] text-muted">Answered</span>
-            <span className="font-extrabold tabular-nums">
-              {progress.answered} of {progress.total}
-            </span>
+      <div className="grid items-start gap-[22px] lg:grid-cols-[minmax(0,1fr)_320px]">
+        <aside className="lg:order-2 lg:fixed lg:right-[max(1.75rem,calc((100vw-1160px)/2+1.75rem))] lg:top-[84px] lg:z-30 lg:w-[320px]" aria-label="Question overview">
+          <div className="grid gap-3 rounded-xl border border-[#dfe5f0] border-t-4 border-t-accent bg-white px-5 py-[18px] shadow-[0_12px_32px_rgb(36_52_80/10%)] lg:max-h-[calc(100vh-6.5rem)] lg:overflow-auto">
+            <h3>Questions</h3>
+            <div className="grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(44px,1fr))]">
+              {questions.map((question, index) => {
+                const answered = question.selected_answer != null && question.selected_answer !== '';
+                const label = `Question ${index + 1}, ${answered ? 'answered' : 'not answered'}${question.is_flagged ? ', flagged' : ''}`;
+                return (
+                  <button
+                    key={question.id}
+                    type="button"
+                    className={`relative min-h-[44px] rounded-[7px] border font-bold tabular-nums${answered ? ' border-[#b4c7ef] bg-[#eef4ff] text-primary-dark' : ' border-[#dfe5f0] bg-white'}${question.is_flagged ? " after:absolute after:bottom-[5px] after:left-1/2 after:h-1.5 after:w-1.5 after:-translate-x-1/2 after:rounded-full after:bg-[#b42318] after:content-['']" : ''}${focusedId === question.id ? ' outline outline-[3px] outline-[rgb(242_132_47/45%)] outline-offset-2' : ''}`}
+                    aria-label={label}
+                    title={label}
+                    onClick={() => {
+                      setPage(pageOfIndex(index, RUNNER_PAGE_SIZE));
+                      setFocusedId(question.id);
+                    }}
+                  >
+                    {index + 1}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[0.84rem] font-normal text-muted">
+              A filled cell is answered, a dot marks a flagged question, and a blank cell still needs an answer.
+            </p>
+            {pendingSave && <Spinner label="Saving answers" />}
+            <Button
+              className="w-full"
+              onClick={() => {
+                setConfirming(true);
+                setUnanswered(null);
+              }}
+              disabled={submitting || expired}
+            >
+              Submit exam
+            </Button>
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-[0.8rem] font-bold uppercase tracking-[0.05em] text-muted">To do</span>
-            <span className={`font-extrabold tabular-nums${progress.unanswered > 0 ? ' text-[#b42318]' : ''}`}>{progress.unanswered}</span>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-[0.8rem] font-bold uppercase tracking-[0.05em] text-muted">Flagged</span>
-            <span className="font-extrabold tabular-nums">{progress.flagged}</span>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center justify-end gap-2 [grid-column:1/-1]">
-          {pendingSave && <Spinner label="Saving answers" />}
-          <Button variant="secondary" onClick={() => { void enterFullscreen(); }} disabled={fullscreen}>
-            {fullscreen ? 'Fullscreen on' : 'Go fullscreen'}
-          </Button>
-          <Button
-            onClick={() => {
-              setConfirming(true);
-              setUnanswered(null);
-            }}
-            disabled={submitting || expired}
-          >
-            Submit exam
-          </Button>
-        </div>
-      </div>
-
+        </aside>
+        <div className="grid min-w-0 gap-[22px] lg:order-1">
       {(unanswered || submitError || sessionNotice) && (
         <div className="mt-5 grid gap-[18px]" style={{ marginTop: 0 }}>
           {unanswered && <Alert>{unanswered.message}</Alert>}
@@ -324,59 +317,41 @@ export function StudentExamRunner({ exam, attempt, questions: initialQuestions, 
       )}
 
       {confirming && (
-        <Cardish>
-          <h3>Submit this exam?</h3>
-          <p>
-            You have answered {progress.answered} of {progress.total} questions
-            {progress.unanswered > 0
-              ? `. ${progress.unanswered} ${progress.unanswered === 1 ? 'question is' : 'questions are'} still blank, so the server will refuse the submission until you answer ${progress.unanswered === 1 ? 'it' : 'them'}.`
-              : '. Every question is answered.'}
-          </p>
-          <p className="font-normal text-muted">
-            Submitting closes the attempt for good. You will not see your answers or your grade on this
-            platform again.
-          </p>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button disabled={submitting} onClick={() => { void submitAttempt('manual'); }}>
-              {submitting ? 'Submitting…' : 'Submit exam'}
-            </Button>
-            <Button variant="secondary" disabled={submitting} onClick={() => setConfirming(false)}>
-              Keep working
-            </Button>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[rgb(35_47_77/55%)] p-4"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) setConfirming(false);
+          }}
+        >
+          <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="submit-dialog-title"
+            tabIndex={-1}
+            className="grid w-full max-w-[520px] gap-3 rounded-xl border border-[#f2c79a] bg-[#fff8f0] p-6 shadow-[0_24px_64px_rgb(36_52_80/25%)]"
+          >
+            <h3 id="submit-dialog-title">Submit this exam?</h3>
+            <p>{submitConfirmCopy(progress.answered, progress.total)}</p>
+            <p className="font-normal text-muted">
+              Submitting closes the attempt for good. You will not see your answers or your grade on this
+              platform again.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button disabled={submitting} onClick={() => { void submitAttempt('manual'); }}>
+                {submitting ? 'Submitting…' : 'Submit exam'}
+              </Button>
+              <Button variant="secondary" disabled={submitting} onClick={() => setConfirming(false)}>
+                Keep working
+              </Button>
+            </div>
           </div>
-        </Cardish>
+        </div>
       )}
 
-      <nav className="grid gap-3 rounded-xl border border-[#dfe5f0] bg-white px-5 py-[18px]" aria-label="Question overview">
-        <h3>Questions</h3>
-        <div className="grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(44px,1fr))]">
-          {questions.map((question, index) => {
-            const answered = question.selected_answer != null && question.selected_answer !== '';
-            const label = `Question ${index + 1}, ${answered ? 'answered' : 'not answered'}${question.is_flagged ? ', flagged' : ''}`;
-            return (
-              <button
-                key={question.id}
-                type="button"
-                className={`relative min-h-[44px] rounded-[7px] border font-bold tabular-nums${answered ? ' border-[#b4c7ef] bg-[#eef4ff] text-primary-dark' : ' border-[#dfe5f0] bg-white'}${question.is_flagged ? " after:absolute after:bottom-[5px] after:left-1/2 after:h-1.5 after:w-1.5 after:-translate-x-1/2 after:rounded-full after:bg-accent after:content-['']" : ''}${focusedId === question.id ? ' outline outline-[3px] outline-[rgb(242_132_47/45%)] outline-offset-2' : ''}`}
-                aria-label={label}
-                title={label}
-                onClick={() => {
-                  setFocusedId(question.id);
-                  questionRefs.current.get(question.id)?.scrollIntoView({ block: 'center' });
-                }}
-              >
-                {index + 1}
-              </button>
-            );
-          })}
-        </div>
-        <p className="text-[0.84rem] font-normal text-muted">
-          A filled cell is answered, a dot marks a flagged question, and a blank cell still needs an answer.
-        </p>
-      </nav>
-
       <ol className="m-0 grid list-none gap-[22px] p-0">
-        {questions.map((question, index) => {
+        {visibleQuestions.map((question, position) => {
+          const index = pageStart + position;
           const choices = answerChoices(question);
           const save = saves[question.id] ?? null;
           const saveError = saveErrors[question.id];
@@ -391,20 +366,36 @@ export function StudentExamRunner({ exam, attempt, questions: initialQuestions, 
               >
                 <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2.5">
                   <span className="font-extrabold text-primary-dark">Question {index + 1}</span>
-                  <span className={`${STATUS_PILL} border-[#dfe5f0] bg-[#edf0f6] text-muted`}>{question.difficulty}</span>
                   {saveError && <span className="font-normal text-muted">{saveError}</span>}
                   <span className="ml-auto text-[0.82rem] font-semibold text-muted">
                     {save?.phase === 'saving' && 'Saving…'}
                     {save?.phase === 'saved' && 'Saved'}
                   </span>
-                  <Button
-                    variant="text"
-                    className="ml-1"
+                  <button
+                    type="button"
+                    className={`ml-1 flex min-h-[44px] items-center gap-1.5 rounded-[7px] px-2 font-semibold${question.is_flagged ? ' text-[#b42318]' : ' text-muted hover:text-primary'}`}
                     onClick={() => { void toggleFlag(question); }}
                     aria-pressed={question.is_flagged}
+                    aria-label={question.is_flagged ? 'Remove flag' : 'Flag for review'}
+                    title={question.is_flagged ? 'Remove flag' : 'Flag for review'}
                   >
-                    {question.is_flagged ? 'Flagged — remove' : 'Flag for review'}
-                  </Button>
+                    <svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true">
+                      <path
+                        d="M3.5 2v12"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d="M4 2.8h8.4l-2.2 3 2.2 3H4z"
+                        fill={question.is_flagged ? 'currentColor' : 'none'}
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                    {question.is_flagged && <span>Flagged</span>}
+                  </button>
                 </div>
 
                 <fieldset className="m-0 grid gap-2.5 border-0 p-0">
@@ -435,6 +426,39 @@ export function StudentExamRunner({ exam, attempt, questions: initialQuestions, 
         })}
       </ol>
 
+      {pageTotal > 1 && (
+        <nav
+          className="flex flex-wrap items-center gap-2 rounded-xl border border-[#dfe5f0] bg-white px-5 py-3"
+          aria-label="Question pages"
+        >
+          <Button variant="secondary" disabled={safePage === 0} onClick={() => setPage(safePage - 1)}>
+            Previous
+          </Button>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {Array.from({ length: pageTotal }, (_, target) => (
+              <button
+                key={target}
+                type="button"
+                aria-label={`Page ${target + 1}`}
+                aria-current={target === safePage ? 'page' : undefined}
+                disabled={target === safePage}
+                onClick={() => setPage(target)}
+                className={`min-h-[36px] min-w-[36px] rounded-[7px] border px-2 font-bold tabular-nums${target === safePage ? ' border-primary bg-[#eef4ff] text-primary-dark' : ' border-[#dfe5f0] bg-white hover:border-primary'}`}
+              >
+                {target + 1}
+              </button>
+            ))}
+          </div>
+          <Button variant="secondary" disabled={safePage >= pageTotal - 1} onClick={() => setPage(safePage + 1)}>
+            Next
+          </Button>
+          <span className="ml-auto text-[0.82rem] font-semibold text-muted">
+            Page {safePage + 1} of {pageTotal} · Questions {pageStart + 1}–
+            {Math.min(pageStart + RUNNER_PAGE_SIZE, questions.length)} of {questions.length}
+          </span>
+        </nav>
+      )}
+
       <div className="flex flex-wrap items-center justify-between gap-3 px-0.5 py-1">
         {progress.unanswered > 0 ? (
           <p className="font-normal text-muted">
@@ -454,10 +478,8 @@ export function StudentExamRunner({ exam, attempt, questions: initialQuestions, 
           Submit exam
         </Button>
       </div>
+        </div>
+      </div>
     </div>
   );
-}
-
-function Cardish({ children }: { children: ReactNode }) {
-  return <section className="grid gap-3 rounded-xl border border-[#f2c79a] bg-[#fff8f0] px-5 py-[18px]">{children}</section>;
 }

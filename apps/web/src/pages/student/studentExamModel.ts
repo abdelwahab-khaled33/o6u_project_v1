@@ -359,3 +359,33 @@ export function pointsPerQuestion(points: number | string): number {
   const parsed = Number(points);
   return Number.isFinite(parsed) ? parsed : 0;
 }
+
+export const RUNNER_PAGE_SIZE = 5;
+
+export function totalPages(total: number, pageSize: number = RUNNER_PAGE_SIZE): number {
+  if (!Number.isFinite(total) || total <= 0) return 1;
+  if (!Number.isFinite(pageSize) || pageSize <= 0) return 1;
+  return Math.max(1, Math.ceil(total / pageSize));
+}
+
+export function pageOfIndex(index: number, pageSize: number = RUNNER_PAGE_SIZE): number {
+  if (!Number.isFinite(index) || index < 0) return 0;
+  if (!Number.isFinite(pageSize) || pageSize <= 0) return 0;
+  return Math.floor(index / pageSize);
+}
+
+export function clampPage(page: number, pageTotal: number): number {
+  if (!Number.isFinite(pageTotal) || pageTotal <= 0) return 0;
+  if (!Number.isFinite(page)) return 0;
+  return Math.min(Math.max(0, Math.floor(page)), pageTotal - 1);
+}
+
+export function submitConfirmCopy(answered: number, total: number): string {
+  const unanswered = Math.max(0, total - answered);
+  if (unanswered > 0) {
+    const noun = unanswered === 1 ? 'question is' : 'questions are';
+    const pronoun = unanswered === 1 ? 'it' : 'them';
+    return `You have answered ${answered} of ${total} questions. ${unanswered} ${noun} still blank, so the server will refuse the submission until you answer ${pronoun}.`;
+  }
+  return `You have answered ${answered} of ${total} questions. Every question is answered.`;
+}
