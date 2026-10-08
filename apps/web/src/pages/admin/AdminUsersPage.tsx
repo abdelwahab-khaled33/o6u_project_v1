@@ -929,7 +929,7 @@ export function AdminUsersPage() {
                     <td>{user.is_active ? 'Yes' : 'No'}</td>
                     <td>{formatDateTime(user.created_at)}</td>
                     <td>
-                      <div className="flex flex-wrap items-center gap-2">
+                      <div className="table-actions flex flex-wrap items-center gap-2">
                         <Button variant="secondary" onClick={() => { setDetail(user); setResetTarget(null); }}>Open</Button>
                         <Button variant="secondary" onClick={() => { setResetTarget(user); setDetail(null); }}>Reset password</Button>
                         <Button

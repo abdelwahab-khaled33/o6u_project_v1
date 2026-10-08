@@ -312,7 +312,7 @@ export function ExamLivePage() {
                               <td className="font-normal text-muted">{connection}</td>
                               <td>
                                 {releasingId === attempt.student_exam_id ? (
-                                  <div className="flex flex-wrap items-center gap-2">
+                                  <div className="table-actions flex flex-wrap items-center gap-2">
                                     <span className="font-normal text-muted">Release this session?</span>
                                     <Button
                                       variant="danger"

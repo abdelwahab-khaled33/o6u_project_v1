@@ -111,7 +111,7 @@ export function AdminSubjectsPage() {
                   <td>{subject.code}</td>
                   <td>{subject.name}</td>
                   <td>
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="table-actions flex flex-wrap items-center gap-2">
                       <Button variant="secondary" onClick={() => { setCreating(false); setEditing(subject); setConfirmDelete(null); }}>Edit</Button>
                       {confirmDelete === subject.id ? (
                         <>

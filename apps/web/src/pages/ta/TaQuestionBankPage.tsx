@@ -517,7 +517,7 @@ export function TaQuestionBankPage() {
                               <td>{formatDateTime(question.created_at)}</td>
                               <td>
                                 {manageable ? (
-                                  <div className="flex flex-wrap items-center gap-2">
+                                  <div className="table-actions flex flex-wrap items-center gap-2">
                                     <Button
                                       variant="secondary"
                                       onClick={() => { setCreating(false); setEditing(question); setConfirmDelete(null); }}

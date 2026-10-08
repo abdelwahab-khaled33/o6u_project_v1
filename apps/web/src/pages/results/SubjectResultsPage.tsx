@@ -209,7 +209,7 @@ export function SubjectResultsPage({ detailsBase }: { detailsBase: string }) {
                                   {columnTypeLabel(column.type)} · {formatGradeCell(column.max_grade)} max ·{' '}
                                   {column.owner.full_name}
                                 </div>
-                                <div className="flex flex-wrap items-center gap-2">
+                                <div className="table-actions flex flex-wrap items-center gap-2">
                                   <Link to={`${detailsBase}/${column.id}`}>Open results</Link>
                                   <Button
                                     variant="text"

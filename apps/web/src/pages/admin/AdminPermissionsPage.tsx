@@ -228,7 +228,7 @@ export function AdminPermissionsPage() {
                       <td>{yesNo(row.override)}</td>
                       <td>{row.effective ? 'Yes' : 'No'}{!applies && <span className="font-normal text-muted"> n/a</span>}</td>
                       <td>
-                        <div className="flex flex-wrap items-center gap-2">
+                        <div className="table-actions flex flex-wrap items-center gap-2">
                           <Button
                             variant="secondary"
                             disabled={userBusyKey === row.permission_key}

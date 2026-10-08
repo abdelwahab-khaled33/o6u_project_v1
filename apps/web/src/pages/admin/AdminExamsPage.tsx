@@ -214,7 +214,7 @@ export function AdminExamsPage() {
                     <td>{formatDateTime(exam.start_time)}</td>
                     <td>{formatDateTime(exam.end_time)}</td>
                     <td>
-                      <div className="flex flex-wrap items-center gap-2">
+                      <div className="table-actions flex flex-wrap items-center gap-2">
                         <Button variant="secondary" onClick={() => navigate(`/admin/exams/${exam.id}/review`)}>
                           Review
                         </Button>
@@ -237,7 +237,7 @@ export function AdminExamsPage() {
                       </div>
                       {exam.status === 'pending_approval' && (
                         <>
-                          <div className="flex flex-wrap items-center gap-2">
+                          <div className="table-actions flex flex-wrap items-center gap-2">
                             <Button disabled={busyId === exam.id} onClick={() => { void approve(exam); }}>
                               {busyId === exam.id ? 'Saving…' : 'Approve'}
                             </Button>
@@ -248,7 +248,7 @@ export function AdminExamsPage() {
                               <Field label="Rejection reason (minimum 3 characters)" htmlFor={`reject-reason-${exam.id}`}>
                                 <Input id={`reject-reason-${exam.id}`} name="reason" minLength={3} required />
                               </Field>
-                              <div className="flex flex-wrap items-center gap-2">
+                              <div className="table-actions flex flex-wrap items-center gap-2">
                                 <Button variant="danger" type="submit" disabled={busyId === exam.id}>Confirm reject</Button>
                                 <Button variant="secondary" type="button" onClick={() => setRejectingId(null)}>Cancel</Button>
                               </div>
@@ -258,7 +258,7 @@ export function AdminExamsPage() {
                       )}
                       {canRegenerate(exam.status) && (
                         <>
-                          <div className="flex flex-wrap items-center gap-2">
+                          <div className="table-actions flex flex-wrap items-center gap-2">
                             <Button variant="secondary" onClick={() => openRotation(exam)}>
                               Regenerate code
                             </Button>
@@ -288,7 +288,7 @@ export function AdminExamsPage() {
                                 Leave it blank to keep the expiry already on this exam.
                               </p>
                               {rotatingProblem !== null && <Alert variant="info">{rotatingProblem}</Alert>}
-                              <div className="flex flex-wrap items-center gap-2">
+                              <div className="table-actions flex flex-wrap items-center gap-2">
                                 <Button variant="danger" type="submit" disabled={busyId === exam.id}>
                                   {busyId === exam.id ? 'Regenerating…' : 'Confirm regenerate'}
                                 </Button>

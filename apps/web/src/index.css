@@ -60,6 +60,21 @@
   }
 }
 
+/* Compact action buttons inside table cells. Unlayered on purpose: the Button
+   component sets its size with utilities (which live in cascade layers), so a
+   layered rule here could never override it. This keeps every Actions cell
+   repo-wide at one tidy size without touching page logic. */
+td .table-actions,
+th .table-actions {
+  gap: 6px;
+}
+td .table-actions > button,
+th .table-actions > button {
+  min-height: 34px;
+  padding: 4px 12px;
+  font-size: 0.85rem;
+}
+
 :focus-visible {
   outline: 3px solid rgb(242 132 47 / 45%);
   outline-offset: 2px;

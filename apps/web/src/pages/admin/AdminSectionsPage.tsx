@@ -177,7 +177,7 @@ export function AdminSectionsPage() {
                   <td>{section.ta.full_name}</td>
                   <td>{section._count?.memberships ?? 0}</td>
                   <td>
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="table-actions flex flex-wrap items-center gap-2">
                       <Button variant="secondary" onClick={() => { setCreating(false); setEditing(section); setConfirmDelete(null); }}>Edit</Button>
                       {confirmDelete === section.id ? (
                         <>
