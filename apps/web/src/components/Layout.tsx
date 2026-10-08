@@ -1,6 +1,7 @@
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import type { Role } from '@exam/shared';
+import { O6ULogo } from './brand/O6ULogo';
 
 const homeByRole: Record<Role, string> = { admin: '/admin', doctor: '/doctor', ta: '/ta', student: '/student' };
 
@@ -52,7 +53,7 @@ const ICONS: Record<string, string> = {
 
 function NavIcon({ name }: { name: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="h-[19px] w-[19px] flex-none opacity-85">
       <path d={ICONS[name] ?? ICONS.file} />
     </svg>
   );
@@ -64,41 +65,52 @@ export default function Layout() {
 
   const items = NAV_BY_ROLE[user.role];
   return (
-    <div className="app-shell">
-      <aside className="app-sidebar" aria-label="Primary">
-        <Link className="sidebar-brand" to={homeByRole[user.role]}>
-          <span className="sidebar-mark" aria-hidden="true">E</span>
-          <span className="sidebar-brand-text">Exam Platform<small>{workspaceByRole[user.role]}</small></span>
+    <div className="grid min-h-screen bg-[#edf0f6] md:grid-cols-[76px_minmax(0,1fr)] lg:grid-cols-[252px_minmax(0,1fr)]">
+      <aside aria-label="Primary" className="sticky top-0 flex h-screen flex-col gap-[18px] bg-gradient-to-b from-[#304269] to-[#232f4d] px-3.5 pb-4 pt-5 text-[#e9edf7] max-md:static max-md:h-auto max-md:flex-row max-md:items-center max-md:gap-2.5 max-md:px-3 max-md:py-2.5">
+        <Link to={homeByRole[user.role]} className="flex items-center gap-3 px-2.5 py-1 text-inherit no-underline max-md:p-0 md:justify-center lg:justify-start">
+          <O6ULogo size="sm" />
+          <span className="grid text-[1.02rem] font-bold leading-tight max-md:grid md:hidden lg:grid">
+            O6U Exam Platform
+            <small className="text-[0.74rem] font-semibold text-[#b9c4de]">{workspaceByRole[user.role]}</small>
+          </span>
         </Link>
-        <nav className="sidebar-nav" aria-label="Workspace sections">
+        <nav aria-label="Workspace sections" className="grid gap-1 overflow-y-auto max-md:flex max-md:flex-1 max-md:gap-1.5 max-md:overflow-x-auto">
           {items.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
-              className={({ isActive }: { isActive: boolean }) => `sidebar-link${isActive ? ' is-active' : ''}`}
+              className={({ isActive }: { isActive: boolean }) =>
+                `flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-[0.94rem] font-semibold text-[#c9d3e9] no-underline hover:bg-white/10 hover:text-white max-md:whitespace-nowrap md:justify-center md:p-3 lg:justify-start ${
+                  isActive ? 'bg-white/10 text-white shadow-[inset_3px_0_0_#F2842F]' : ''
+                }`
+              }
             >
               <NavIcon name={item.icon} />
-              <span>{item.label}</span>
+              <span className="max-md:inline md:hidden lg:inline">{item.label}</span>
             </NavLink>
           ))}
         </nav>
-        <div className="sidebar-footer">
-          <div className="sidebar-user">
-            <span className="sidebar-avatar" aria-hidden="true">{user.fullName.slice(0, 1).toUpperCase()}</span>
-            <span className="sidebar-user-text">{user.fullName}<small>{user.role}</small></span>
+        <div className="mt-auto grid gap-3 border-t border-white/15 pt-3.5 max-md:hidden">
+          <div className="flex items-center gap-2.5 px-1.5 md:justify-center lg:justify-start">
+            <span aria-hidden="true" className="grid h-[34px] w-[34px] flex-none place-items-center rounded-full bg-white/15 font-extrabold text-white">{user.fullName.slice(0, 1).toUpperCase()}</span>
+            <span className="grid min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[0.88rem] font-semibold md:hidden lg:grid">
+              {user.fullName}
+              <small className="font-medium capitalize text-[#b9c4de]">{user.role}</small>
+            </span>
           </div>
-          <div className="sidebar-footer-actions">
-            <NavLink className="sidebar-account" to="/account/change-password">Account</NavLink>
-            <button type="button" className="sidebar-signout" onClick={logout}>Sign out</button>
+          <div className="flex items-center gap-2 px-1.5 md:hidden lg:flex">
+            <NavLink to="/account/change-password" className="text-[0.85rem] font-semibold text-[#dbe3f4]">Account</NavLink>
+            <button type="button" onClick={logout} className="rounded-lg border border-white/25 bg-transparent px-3 py-1.5 text-[0.85rem] font-semibold text-white hover:bg-white/10">Sign out</button>
           </div>
+          <p className="px-1.5 text-[0.72rem] font-medium text-[#b9c4de] md:hidden lg:block">October 6 University · Hotline 16704</p>
         </div>
       </aside>
-      <div className="app-body">
-        <header className="app-topbar">
-          <span className="topbar-workspace">{workspaceByRole[user.role]}</span>
-          <span className="topbar-user">{user.fullName}<small>{user.role}</small></span>
+      <div className="grid min-w-0 grid-rows-[auto_minmax(0,1fr)]">
+        <header className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-[#dfe5f0] bg-white/90 px-7 py-3.5 backdrop-blur max-md:px-4 max-md:py-3">
+          <span className="font-bold text-primary-dark">{workspaceByRole[user.role]}</span>
+          <span className="flex items-baseline gap-2 text-[0.88rem] font-semibold text-muted">{user.fullName}<small className="capitalize">{user.role}</small></span>
         </header>
-        <main className="app-main"><Outlet /></main>
+        <main className="mx-auto w-full max-w-[1160px] px-7 pb-12 pt-7 max-md:px-4 max-md:py-5"><Outlet /></main>
       </div>
     </div>
   );
