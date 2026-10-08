@@ -7,6 +7,7 @@ import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Field';
 import { Spinner } from '../../components/ui/Spinner';
 import { api } from '../../lib/api';
+import { STATUS_PILL } from '../../lib/statusTone';
 import { EmptyState, formatDateTime, messageFrom } from '../admin/adminShared';
 import { formatGrade } from '../doctor/DoctorQuestionForm';
 import { StudentExamRunner, type FinishReason } from './StudentExamRunner';
@@ -123,9 +124,9 @@ export function StudentExamsPage() {
 
   if (phase === 'done' && running) {
     return (
-      <Card className="stacked-card">
+      <Card className="mt-5">
         <h2>{running.exam.title} — finished</h2>
-        <div className="form-stack">
+        <div className="mt-5 grid gap-[18px]">
           {finishReason === 'submitted' ? (
             <Alert variant="success">
               You have submitted your exam. Your answers are with your instructor now.
@@ -136,11 +137,11 @@ export function StudentExamsPage() {
               answers were sent automatically.
             </Alert>
           )}
-          <p className="muted">
+          <p className="font-normal text-muted">
             You will not see your answers or your grade on this platform again. If anything still needs your
             attention, your instructor will reach you directly.
           </p>
-          <div className="row-actions">
+          <div className="flex flex-wrap items-center gap-2">
             <Button onClick={() => { void backToList(); }}>Back to my exams</Button>
           </div>
         </div>
@@ -152,13 +153,13 @@ export function StudentExamsPage() {
     <div>
       <Card>
         <h2>My exams</h2>
-        <p className="page-intro">
+        <p className="font-normal text-muted">
           Exams and quizzes open to you right now. A quiz is a short check from your TA; an exam is set by a
           doctor and needs the access code your supervisor announces. Once you start, the clock cannot be
           paused — when time runs out, your saved answers are submitted automatically.
         </p>
         {listError && <Alert>{listError}</Alert>}
-        <div className="form-stack">
+        <div className="mt-5 grid gap-[18px]">
           {loading ? (
             <div><Spinner label="Loading your exams" /> Loading your exams…</div>
           ) : exams.length === 0 ? (
@@ -171,28 +172,28 @@ export function StudentExamsPage() {
               const code = codes[exam.id] ?? '';
               const codeProblem = accessCodeInputProblem(code);
               return (
-                <section key={exam.id} className="student-exam-row">
-                  <div className="student-exam-copy">
-                    <div className="row-actions">
-                      <span className="question-text"><strong>{exam.title}</strong></span>
-                      <span className="status">{exam.type === 'ta_quiz' ? 'Quiz' : 'Exam'}</span>
+                <section key={exam.id} className="grid items-start gap-x-[22px] gap-y-3.5 rounded-xl border border-[#dfe5f0] bg-white p-4 md:grid-cols-[minmax(0,1fr)_minmax(260px,auto)]">
+                  <div className="grid min-w-0 gap-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="max-w-[460px] [overflow-wrap:anywhere]"><strong>{exam.title}</strong></span>
+                      <span className={`${STATUS_PILL} border-[#dfe5f0] bg-[#edf0f6] text-muted`}>{exam.type === 'ta_quiz' ? 'Quiz' : 'Exam'}</span>
                     </div>
-                    <div className="muted">
+                    <div className="font-normal text-muted">
                       {exam.subject.code} — {exam.subject.name}
                     </div>
-                    <div className="muted">
+                    <div className="font-normal text-muted">
                       {formatDateTime(exam.start_time)} to {formatDateTime(exam.end_time)} · {exam.duration_minutes}
                       {' '}min · {formatGrade(exam.points_per_question)} points per question
                     </div>
                   </div>
 
-                  <div className="student-exam-action">
+                  <div className="grid min-w-0 justify-items-start gap-2">
                     {exam.status === 'in_progress' ? (
                       <>
-                        <p className="muted">
+                        <p className="font-normal text-muted">
                           You already started this exam. Your answers are saved; resume when you are ready.
                         </p>
-                        <div className="row-actions">
+                        <div className="flex flex-wrap items-center gap-2">
                           <Button disabled={startBusy === exam.id} onClick={() => { void startExam(exam, null); }}>
                             {startBusy === exam.id ? 'Opening…' : 'Resume'}
                           </Button>
@@ -200,9 +201,9 @@ export function StudentExamsPage() {
                       </>
                     ) : (
                       <>
-                        <div className="row-actions">
+                        <div className="flex flex-wrap items-center gap-2">
                           <Input
-                            className="access-input"
+                            className="w-[10.5em] font-mono uppercase tracking-[0.1em]"
                             type="text"
                             inputMode="text"
                             autoComplete="off"
@@ -231,9 +232,9 @@ export function StudentExamsPage() {
                           </Button>
                         </div>
                         {codeProblem != null && code !== '' ? (
-                          <p className="muted">{codeProblem}</p>
+                          <p className="font-normal text-muted">{codeProblem}</p>
                         ) : (
-                          <p className="muted">
+                          <p className="font-normal text-muted">
                             Your supervisor announces the 6-character access code when this exam opens.
                           </p>
                         )}

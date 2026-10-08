@@ -9,6 +9,7 @@ import { Field, Select } from '../../components/ui/Field';
 import { Spinner } from '../../components/ui/Spinner';
 import { Table } from '../../components/ui/Table';
 import { api } from '../../lib/api';
+import { STATUS_PILL, statusTone } from '../../lib/statusTone';
 import { describeError, EmptyState, formatDateTime, humanise, plural } from '../admin/adminShared';
 import { formatGrade } from '../doctor/DoctorQuestionForm';
 import { canDeleteExam, isUpcoming, STATUS_LABELS, type ExamStatus, type ExamSummary } from '../doctor/doctorExamTypes';
@@ -129,7 +130,7 @@ export function TaQuizzesPage() {
     <div>
       <Card>
         <h2>Quizzes</h2>
-        <p className="page-intro">
+        <p className="font-normal text-muted">
           Every quiz you created. A quiz does not wait for an administrator: it is live as soon as it is created,
           students reach it with the access code below, and you decide who it targets. You cannot target a whole
           subject — a quiz is built for your own sections, or for a list of your own students.
@@ -137,8 +138,8 @@ export function TaQuizzesPage() {
         {error && <Alert>{error}</Alert>}
         {notice && <Alert variant="success">{notice}</Alert>}
 
-        <div className="form-stack">
-          <div className="filter-bar">
+        <div className="mt-5 grid gap-[18px]">
+          <div className="flex flex-wrap items-end gap-3 rounded-[14px] border border-[#dfe5f0] bg-white p-4 shadow-[0_4px_14px_rgb(36_52_80/7%)]">
             <Field label="Status" htmlFor="ta-quiz-status">
               <Select
                 id="ta-quiz-status"
@@ -153,7 +154,7 @@ export function TaQuizzesPage() {
                 ))}
               </Select>
             </Field>
-            <div className="row-actions">
+            <div className="flex flex-wrap items-center gap-2">
               <Button onClick={() => navigate('/ta/quizzes/new')}>New quiz</Button>
             </div>
           </div>
@@ -185,34 +186,34 @@ export function TaQuizzesPage() {
                   return (
                     <tr key={exam.id}>
                       <td>
-                        <div className="question-text">{exam.title}</div>
-                        <span className="muted">
+                        <div className="max-w-[460px] [overflow-wrap:anywhere]">{exam.title}</div>
+                        <span className="font-normal text-muted">
                           {exam.subject.code} — {exam.subject.name} · {plural(exam._count.pool_questions, 'questions')} in the pool
                         </span>
-                        <div className="muted">
+                        <div className="font-normal text-muted">
                           {humanise(exam.quiz_source ?? 'shared_bank')} · {plural(exam._count.student_exams, 'attempts')} generated
                         </div>
                       </td>
                       <td>
-                        <span className={`status status--${exam.status}`}>
+                        <span className={`${STATUS_PILL} ${statusTone(exam.status)}`}>
                           {STATUS_LABELS[exam.status]}
                         </span>
-                        <div className="muted">{humanise(exam.target_scope)}</div>
+                        <div className="font-normal text-muted">{humanise(exam.target_scope)}</div>
                       </td>
                       <td>
                         {['easy', 'medium', 'hard'].map((tier) => (
                           <div key={tier}>{tier}: {mix[tier as keyof typeof mix]}</div>
                         ))}
-                        <div className="muted">{exam.duration_minutes} min</div>
+                        <div className="font-normal text-muted">{exam.duration_minutes} min</div>
                       </td>
                       <td>{formatGrade(exam.points_per_question)} pts</td>
                       <td>
                         <div>{formatDateTime(exam.start_time)}</div>
-                        <div className="muted">to {formatDateTime(exam.end_time)}</div>
-                        {!upcoming && <div className="muted">Already started</div>}
+                        <div className="font-normal text-muted">to {formatDateTime(exam.end_time)}</div>
+                        {!upcoming && <div className="font-normal text-muted">Already started</div>}
                       </td>
                       <td>
-                        <div className="row-actions">
+                        <div className="flex flex-wrap items-center gap-2">
                           <Button variant="secondary" onClick={() => { void revealCode(exam.id); }}>
                             {codeFor === exam.id ? 'Hide code' : 'Access code'}
                           </Button>
@@ -234,7 +235,7 @@ export function TaQuizzesPage() {
                           </Button>
                           {confirmDelete === exam.id ? (
                             <>
-                              <span className="muted">Delete this quiz?</span>
+                              <span className="font-normal text-muted">Delete this quiz?</span>
                               <Button
                                 variant="danger"
                                 disabled={busyId === exam.id}
@@ -269,7 +270,7 @@ export function TaQuizzesPage() {
           )}
 
           {codeFor !== null && (
-            <div className="form-stack">
+            <div className="mt-5 grid gap-[18px]">
               {codeError && <Alert>{codeError}</Alert>}
               {code && (
                 <p>
@@ -304,12 +305,12 @@ export function TaQuizzesPage() {
                       <tr key={attempt.student_exam_id}>
                         <td>
                           <div>{attempt.student.full_name}</div>
-                          <div className="muted">{attempt.student.student_code ?? '—'}</div>
+                          <div className="font-normal text-muted">{attempt.student.student_code ?? '—'}</div>
                         </td>
-                        <td><span className={`status status--${attempt.status}`}>{humanise(attempt.status)}</span></td>
+                        <td><span className={`${STATUS_PILL} ${statusTone(attempt.status)}`}>{humanise(attempt.status)}</span></td>
                         <td>{attempt.answered_count}</td>
                         <td>{formatDateTime(attempt.deadline_at)}</td>
-                        <td className="muted">{attempt.has_active_session ? 'Active' : 'None'}</td>
+                        <td className="font-normal text-muted">{attempt.has_active_session ? 'Active' : 'None'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -318,7 +319,7 @@ export function TaQuizzesPage() {
             </section>
           )}
 
-          <p className="muted">
+          <p className="font-normal text-muted">
             Points per question comes back as text because the database stores it as a decimal; it is read as a
             number before display. Questions come from the <Link to="/ta/question-bank">shared question bank</Link>.
           </p>

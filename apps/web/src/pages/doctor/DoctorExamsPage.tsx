@@ -9,6 +9,7 @@ import { Field, Select } from '../../components/ui/Field';
 import { Spinner } from '../../components/ui/Spinner';
 import { Table } from '../../components/ui/Table';
 import { api } from '../../lib/api';
+import { STATUS_PILL, statusTone } from '../../lib/statusTone';
 import { describeError, EmptyState, formatDateTime, humanise, plural } from '../admin/adminShared';
 import { formatGrade } from './DoctorQuestionForm';
 import {
@@ -108,15 +109,15 @@ export function DoctorExamsPage() {
     <div>
       <Card>
         <h2>Exams</h2>
-        <p className="page-intro">
+        <p className="font-normal text-muted">
           Every exam you created, newest first. An exam you author needs an administrator to approve it, and
           editing an approved exam sends it back for approval, so students keep the version that was approved.
         </p>
         {error && <Alert>{error}</Alert>}
         {notice && <Alert variant="success">{notice}</Alert>}
 
-        <div className="form-stack">
-          <div className="filter-bar">
+        <div className="mt-5 grid gap-[18px]">
+          <div className="flex flex-wrap items-end gap-3 rounded-[14px] border border-[#dfe5f0] bg-white p-4 shadow-[0_4px_14px_rgb(36_52_80/7%)]">
             <Field label="Status" htmlFor="doctor-exam-status">
               <Select
                 id="doctor-exam-status"
@@ -132,7 +133,7 @@ export function DoctorExamsPage() {
                 ))}
               </Select>
             </Field>
-            <div className="row-actions">
+            <div className="flex flex-wrap items-center gap-2">
               <Button onClick={() => navigate('/doctor/exams/new')}>New exam</Button>
             </div>
           </div>
@@ -164,37 +165,37 @@ export function DoctorExamsPage() {
                   return (
                     <tr key={exam.id}>
                       <td>
-                        <div className="question-text">{exam.title}</div>
-                        <span className="muted">
+                        <div className="max-w-[460px] [overflow-wrap:anywhere]">{exam.title}</div>
+                        <span className="font-normal text-muted">
                           {exam.subject.code} — {exam.subject.name} · {plural(exam._count.pool_questions, 'questions')} in the pool
                         </span>
                         {exam.status === 'rejected' && exam.rejection_reason && (
-                          <p className="muted">Rejected: {exam.rejection_reason}</p>
+                          <p className="font-normal text-muted">Rejected: {exam.rejection_reason}</p>
                         )}
                         {resubmitted[exam.id] && (
-                          <p className="muted">{resubmitted[exam.id]}</p>
+                          <p className="font-normal text-muted">{resubmitted[exam.id]}</p>
                         )}
                       </td>
                       <td>
-                        <span className={`status status--${exam.status}`}>
+                        <span className={`${STATUS_PILL} ${statusTone(exam.status)}`}>
                           {STATUS_LABELS[exam.status]}
                         </span>
-                        <div className="muted">{humanise(exam.target_scope)}</div>
+                        <div className="font-normal text-muted">{humanise(exam.target_scope)}</div>
                       </td>
                       <td>
                         {['easy', 'medium', 'hard'].map((tier) => (
                           <div key={tier}>{tier}: {mix[tier as keyof typeof mix]}</div>
                         ))}
-                        <div className="muted">{exam.duration_minutes} min</div>
+                        <div className="font-normal text-muted">{exam.duration_minutes} min</div>
                       </td>
                       <td>{formatGrade(exam.points_per_question)} pts</td>
                       <td>
                         <div>{formatDateTime(exam.start_time)}</div>
-                        <div className="muted">to {formatDateTime(exam.end_time)}</div>
-                        {!upcoming && <div className="muted">Already started</div>}
+                        <div className="font-normal text-muted">to {formatDateTime(exam.end_time)}</div>
+                        {!upcoming && <div className="font-normal text-muted">Already started</div>}
                       </td>
                       <td>
-                        <div className="row-actions">
+                        <div className="flex flex-wrap items-center gap-2">
                           <Button
                             variant="secondary"
                             onClick={() => navigate(`/doctor/results/${exam.id}`)}
@@ -238,7 +239,7 @@ export function DoctorExamsPage() {
                               could ever need. */}
                           {exam.status === 'rejected' && (confirmResubmit === exam.id ? (
                             <>
-                              <span className="muted">Resubmit this exam?</span>
+                              <span className="font-normal text-muted">Resubmit this exam?</span>
                               <Button
                                 variant="primary"
                                 disabled={busyId === exam.id}
@@ -265,7 +266,7 @@ export function DoctorExamsPage() {
                           ))}
                           {confirmDelete === exam.id ? (
                             <>
-                              <span className="muted">Delete this exam?</span>
+                              <span className="font-normal text-muted">Delete this exam?</span>
                               <Button
                                 variant="danger"
                                 disabled={busyId === exam.id}
@@ -299,7 +300,7 @@ export function DoctorExamsPage() {
             </Table>
           )}
 
-          <p className="muted">
+          <p className="font-normal text-muted">
             Points per question and the counts above come back as text because the database stores them as
             decimals; they are read as numbers before display.{' '}
             <Link to="/doctor/question-bank">Question bank</Link>

@@ -36,3 +36,16 @@ a {
     transition: none;
   }
 }
+
+@layer base {
+  h1 {
+    line-height: 1.2;
+  }
+  h2 {
+    color: var(--color-primary-dark);
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    line-height: 1.2;
+  }
+}

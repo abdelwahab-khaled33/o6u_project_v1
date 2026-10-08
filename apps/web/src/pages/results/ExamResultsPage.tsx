@@ -9,6 +9,7 @@ import { Spinner } from '../../components/ui/Spinner';
 import { Table } from '../../components/ui/Table';
 import { useAuth } from '../../hooks/useAuth';
 import { ApiError, api } from '../../lib/api';
+import { STATUS_PILL, statusTone } from '../../lib/statusTone';
 import { saveBlob } from '../../lib/download';
 import { describeError, EmptyState, formatDateTime } from '../admin/adminShared';
 import {
@@ -105,28 +106,28 @@ export function ExamResultsPage() {
   return (
     <Card>
       {back && (
-        <p className="muted">
+        <p className="font-normal text-muted">
           <Link to={back.to}>{back.label}</Link>
         </p>
       )}
-      <div className="results-head">
+      <div className="flex flex-wrap items-start justify-between gap-x-5 gap-y-3">
         <div>
           <h2>{data ? data.exam.title : 'Exam results'}</h2>
           {data && (
-            <p className="page-intro">
+            <p className="font-normal text-muted">
               {data.exam.subject.code} — {data.exam.subject.name} · {data.exam.type === 'doctor_exam' ? 'Exam' : 'Quiz'} by{' '}
               {data.exam.owner.full_name} · {formatGradeCell(pointsValue(data.exam.points_per_question))} points per
               question · {formatGradeCell(data.exam.max_grade)} max
             </p>
           )}
           {data && (
-            <p className="muted">
+            <p className="font-normal text-muted">
               {formatDateTime(data.exam.start_time)} to {formatDateTime(data.exam.end_time)}
             </p>
           )}
         </div>
         {data && (
-          <div className="row-actions">
+          <div className="flex flex-wrap items-center gap-2">
             {/* Compensating is allowed while an exam is still running (§4.5), and this page 409s
                 until the exam ends, so results alone would be an unreachable entry point during
                 exactly the window it is needed. The exam list carries the same button. */}
@@ -139,7 +140,7 @@ export function ExamResultsPage() {
               </Button>
             )}
             <Button variant="secondary" disabled={exporting} onClick={() => void exportExam()}>
-              <span aria-hidden="true" className="button-icon">
+              <span aria-hidden="true" className="mr-[7px] inline-flex align-[-2px]">
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                   <path
                     d="M8 1v9.2M4.8 7.4 8 10.6l3.2-3.2M2.5 12.5h11V15h-11z"
@@ -166,32 +167,32 @@ export function ExamResultsPage() {
         <Alert variant={isWaiting ? 'info' : 'error'}>{error}</Alert>
       ) : (
         data && (
-          <div className="form-stack">
+          <div className="mt-5 grid gap-[18px]">
             {stats && (
-              <div className="results-stats">
-                <span className="stat">
-                  <span className="tally-label">Students</span>{' '}
-                  <strong className="tally-value">{stats.total}</strong>
+              <div className="flex flex-wrap gap-x-7 gap-y-2">
+                <span className="flex items-baseline gap-2">
+                  <span className="text-[0.8rem] font-bold uppercase tracking-[0.05em] text-muted">Students</span>{' '}
+                  <strong className="font-extrabold tabular-nums">{stats.total}</strong>
                 </span>
-                <span className="stat">
-                  <span className="tally-label">Graded</span> <strong className="tally-value">{stats.graded}</strong>
+                <span className="flex items-baseline gap-2">
+                  <span className="text-[0.8rem] font-bold uppercase tracking-[0.05em] text-muted">Graded</span> <strong className="font-extrabold tabular-nums">{stats.graded}</strong>
                 </span>
-                <span className="stat">
-                  <span className="tally-label">Submitted</span>{' '}
-                  <strong className="tally-value">{stats.submitted}</strong>
+                <span className="flex items-baseline gap-2">
+                  <span className="text-[0.8rem] font-bold uppercase tracking-[0.05em] text-muted">Submitted</span>{' '}
+                  <strong className="font-extrabold tabular-nums">{stats.submitted}</strong>
                 </span>
-                <span className="stat">
-                  <span className="tally-label">Average</span>{' '}
-                  <strong className="tally-value">
+                <span className="flex items-baseline gap-2">
+                  <span className="text-[0.8rem] font-bold uppercase tracking-[0.05em] text-muted">Average</span>{' '}
+                  <strong className="font-extrabold tabular-nums">
                     {stats.average === null ? '—' : formatGradeCell(stats.average)}
                   </strong>
                 </span>
               </div>
             )}
 
-            <div className="results-toolbar">
+            <div className="flex flex-wrap items-end gap-3.5">
               <Field label="Search" htmlFor="exam-results-search">
-                <span className="search-wrap">
+                <span className="relative block [&_input]:w-full [&_input]:pr-[34px] [&_svg]:pointer-events-none [&_svg]:absolute [&_svg]:right-[11px] [&_svg]:top-1/2 [&_svg]:-translate-y-1/2 [&_svg]:text-muted">
                   <Input
                     id="exam-results-search"
                     value={query}
@@ -243,30 +244,30 @@ export function ExamResultsPage() {
                     <tr key={row.student_id}>
                       <td>{index + 1}</td>
                       <td>
-                        <div className="question-text">{row.student_name}</div>
-                        <span className="muted">{row.student_code ?? '—'}</span>
+                        <div className="max-w-[460px] [overflow-wrap:anywhere]">{row.student_name}</div>
+                        <span className="font-normal text-muted">{row.student_code ?? '—'}</span>
                       </td>
                       <td>
                         {row.section ? (
                           <>
                             <div>{row.section.name}</div>
-                            <span className="muted">{row.section.ta.full_name}</span>
+                            <span className="font-normal text-muted">{row.section.ta.full_name}</span>
                           </>
                         ) : (
-                          <span className="muted">—</span>
+                          <span className="font-normal text-muted">—</span>
                         )}
                       </td>
                       <td>
-                        <span className={`status status--${row.status}`}>{statusLabel(row.status)}</span>
+                        <span className={`${STATUS_PILL} ${statusTone(row.status)}`}>{statusLabel(row.status)}</span>
                       </td>
-                      <td className="grade-cell">{formatGradeCell(row.grade)}</td>
+                      <td className="font-bold tabular-nums">{formatGradeCell(row.grade)}</td>
                     </tr>
                   ))}
                 </tbody>
               </Table>
             )}
 
-            <p className="muted">
+            <p className="font-normal text-muted">
               Grades are shown exactly as recorded. Points per question is the exam&apos;s single scoring value.
             </p>
           </div>

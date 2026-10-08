@@ -78,11 +78,11 @@ export function AdminSubjectsPage() {
   return (
     <Card>
       <h2>Subjects</h2>
-      <p className="page-intro">Create and edit subject codes and names. Deleting a subject never cascades: it is refused while other records still depend on it.</p>
+      <p className="font-normal text-muted">Create and edit subject codes and names. Deleting a subject never cascades: it is refused while other records still depend on it.</p>
       {error && <Alert>{error}</Alert>}
       {notice && <Alert variant="success">{notice}</Alert>}
       {formSubject && (
-        <form className="form-stack" onSubmit={(event) => { void saveSubject(event); }}>
+        <form className="mt-5 grid gap-[18px]" onSubmit={(event) => { void saveSubject(event); }}>
           <h3>{editing ? 'Edit subject' : 'Create subject'}</h3>
           <Field label="Code" htmlFor="subject-code">
             <Input id="subject-code" name="code" defaultValue={formSubject.code} maxLength={30} required />
@@ -90,13 +90,13 @@ export function AdminSubjectsPage() {
           <Field label="Name" htmlFor="subject-name">
             <Input id="subject-name" name="name" defaultValue={formSubject.name} required />
           </Field>
-          <div className="row-actions">
+          <div className="flex flex-wrap items-center gap-2">
             <Button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save subject'}</Button>
             <Button type="button" variant="secondary" onClick={() => { setEditing(null); setCreating(false); }}>Cancel</Button>
           </div>
         </form>
       )}
-      <div className="form-stack">
+      <div className="mt-5 grid gap-[18px]">
         {!creating && !editing && <div><Button onClick={() => setCreating(true)}>Create subject</Button></div>}
         {loading ? (
           <div><Spinner label="Loading subjects" /> Loading subjects…</div>
@@ -111,11 +111,11 @@ export function AdminSubjectsPage() {
                   <td>{subject.code}</td>
                   <td>{subject.name}</td>
                   <td>
-                    <div className="row-actions">
+                    <div className="flex flex-wrap items-center gap-2">
                       <Button variant="secondary" onClick={() => { setCreating(false); setEditing(subject); setConfirmDelete(null); }}>Edit</Button>
                       {confirmDelete === subject.id ? (
                         <>
-                          <span className="muted">Delete {subject.code}?</span>
+                          <span className="font-normal text-muted">Delete {subject.code}?</span>
                           <Button variant="danger" disabled={busyId === subject.id} onClick={() => { void deleteSubject(subject); }}>
                             {busyId === subject.id ? 'Deleting…' : 'Confirm delete'}
                           </Button>

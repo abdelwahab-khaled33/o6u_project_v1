@@ -163,13 +163,13 @@ export function AdminExamsPage() {
   return (
     <Card>
       <h2>Exams</h2>
-      <p className="page-intro">
+      <p className="font-normal text-muted">
         Doctor-authored exams need approval; TA quizzes do not and appear once a TA creates them. Rejection reasons must contain at least 3 characters after trimming.
       </p>
       {error && <Alert>{error}</Alert>}
       {notice && <Alert variant="success">{notice}</Alert>}
-      <div className="form-stack">
-        <div className="filter-bar">
+      <div className="mt-5 grid gap-[18px]">
+        <div className="flex flex-wrap items-end gap-3 rounded-[14px] border border-[#dfe5f0] bg-white p-4 shadow-[0_4px_14px_rgb(36_52_80/7%)]">
           <Field label="Type" htmlFor="exam-type">
             <Select id="exam-type" value={typeFilter} onChange={(event) => { setLoading(true); setTypeFilter(event.target.value as ExamTypeFilter); }}>
               {TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
@@ -214,7 +214,7 @@ export function AdminExamsPage() {
                     <td>{formatDateTime(exam.start_time)}</td>
                     <td>{formatDateTime(exam.end_time)}</td>
                     <td>
-                      <div className="row-actions">
+                      <div className="flex flex-wrap items-center gap-2">
                         <Button variant="secondary" onClick={() => navigate(`/admin/exams/${exam.id}/review`)}>
                           Review
                         </Button>
@@ -237,18 +237,18 @@ export function AdminExamsPage() {
                       </div>
                       {exam.status === 'pending_approval' && (
                         <>
-                          <div className="row-actions">
+                          <div className="flex flex-wrap items-center gap-2">
                             <Button disabled={busyId === exam.id} onClick={() => { void approve(exam); }}>
                               {busyId === exam.id ? 'Saving…' : 'Approve'}
                             </Button>
                             <Button variant="danger" onClick={() => setRejectingId(exam.id)}>Reject</Button>
                           </div>
                           {rejectingId === exam.id && (
-                            <form className="form-stack" onSubmit={(event) => { void reject(event, exam); }}>
+                            <form className="mt-5 grid gap-[18px]" onSubmit={(event) => { void reject(event, exam); }}>
                               <Field label="Rejection reason (minimum 3 characters)" htmlFor={`reject-reason-${exam.id}`}>
                                 <Input id={`reject-reason-${exam.id}`} name="reason" minLength={3} required />
                               </Field>
-                              <div className="row-actions">
+                              <div className="flex flex-wrap items-center gap-2">
                                 <Button variant="danger" type="submit" disabled={busyId === exam.id}>Confirm reject</Button>
                                 <Button variant="secondary" type="button" onClick={() => setRejectingId(null)}>Cancel</Button>
                               </div>
@@ -258,14 +258,14 @@ export function AdminExamsPage() {
                       )}
                       {canRegenerate(exam.status) && (
                         <>
-                          <div className="row-actions">
+                          <div className="flex flex-wrap items-center gap-2">
                             <Button variant="secondary" onClick={() => openRotation(exam)}>
                               Regenerate code
                             </Button>
                           </div>
                           {rotatingId === exam.id && (
-                            <form className="form-stack" onSubmit={(event) => { void regenerate(event, exam); }}>
-                              <p className="muted">
+                            <form className="mt-5 grid gap-[18px]" onSubmit={(event) => { void regenerate(event, exam); }}>
+                              <p className="font-normal text-muted">
                                 Regenerating replaces the access code the moment you confirm, so any
                                 student still holding the old one cannot start this exam.
                               </p>
@@ -284,11 +284,11 @@ export function AdminExamsPage() {
                                   }}
                                 />
                               </Field>
-                              <p className="muted">
+                              <p className="font-normal text-muted">
                                 Leave it blank to keep the expiry already on this exam.
                               </p>
                               {rotatingProblem !== null && <Alert variant="info">{rotatingProblem}</Alert>}
-                              <div className="row-actions">
+                              <div className="flex flex-wrap items-center gap-2">
                                 <Button variant="danger" type="submit" disabled={busyId === exam.id}>
                                   {busyId === exam.id ? 'Regenerating…' : 'Confirm regenerate'}
                                 </Button>
@@ -299,7 +299,7 @@ export function AdminExamsPage() {
                             </form>
                           )}
                           {rotation !== undefined && (
-                            <p className="muted">
+                            <p className="font-normal text-muted">
                               New access code <strong>{rotation.code}</strong>
                               {rotation.detail}
                             </p>

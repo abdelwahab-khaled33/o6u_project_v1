@@ -44,7 +44,7 @@ type EnrollmentResponse = {
 function CanChangePasswordField({ role, defaultChecked, id }: { role: string; defaultChecked: boolean; id: string }) {
   if (role === 'student') return null;
   return (
-    <label className="checkbox-row" htmlFor={id}>
+    <label className="flex items-center gap-[9px] font-semibold [&_input]:h-[17px] [&_input]:w-[17px] [&_input]:accent-[#455B8A]" htmlFor={id}>
       <input id={id} name="can_change_password" type="checkbox" defaultChecked={defaultChecked} />
       Can change password
     </label>
@@ -169,7 +169,7 @@ function CreateUserCard({ subjects, sections, onCreated }: { subjects: Subject[]
 
   if (!open) {
     return (
-      <div className="form-stack">
+      <div className="mt-5 grid gap-[18px]">
         {created && <Alert variant="success">{created}</Alert>}
         {note && <Alert variant="info">{note}</Alert>}
         <div><Button onClick={() => { setOpen(true); setCreated(null); setNote(null); }}>Create user</Button></div>
@@ -178,7 +178,7 @@ function CreateUserCard({ subjects, sections, onCreated }: { subjects: Subject[]
   }
 
   return (
-    <form className="form-stack" onSubmit={(event) => { void submit(event); }}>
+    <form className="mt-5 grid gap-[18px]" onSubmit={(event) => { void submit(event); }}>
       <h3>Create user</h3>
       {error && <Alert>{error}</Alert>}
       <Field label="Username" htmlFor="new-username">
@@ -198,14 +198,14 @@ function CreateUserCard({ subjects, sections, onCreated }: { subjects: Subject[]
         </Field>
       )}
       {role === 'student' && (
-        <fieldset className="fieldset-reset">
+        <fieldset className="m-0 grid gap-2.5 border-0 p-0">
           <legend>Enroll in subjects (optional)</legend>
           {subjects.length === 0 ? (
-            <p className="muted">There are no subjects yet. Create the account bare and enroll it later.</p>
+            <p className="font-normal text-muted">There are no subjects yet. Create the account bare and enroll it later.</p>
           ) : (
             <>
               {pickProblems.length > 0 && (
-                <ul className="requirement-list">
+                <ul className="m-0 grid gap-1 pl-5 font-normal text-muted">
                   {pickProblems.map((problem) => <li key={problem}>{problem}</li>)}
                 </ul>
               )}
@@ -214,7 +214,7 @@ function CreateUserCard({ subjects, sections, onCreated }: { subjects: Subject[]
                 const subjectSections = sections.filter((section) => section.subject_id === subject.id);
                 return (
                   <div key={subject.id}>
-                    <label className="checkbox-row" htmlFor={`new-enroll-${subject.id}`}>
+                    <label className="flex items-center gap-[9px] font-semibold [&_input]:h-[17px] [&_input]:w-[17px] [&_input]:accent-[#455B8A]" htmlFor={`new-enroll-${subject.id}`}>
                       <input
                         id={`new-enroll-${subject.id}`}
                         type="checkbox"
@@ -243,13 +243,13 @@ function CreateUserCard({ subjects, sections, onCreated }: { subjects: Subject[]
         </fieldset>
       )}
       {role === 'doctor' && (
-        <fieldset className="fieldset-reset">
+        <fieldset className="m-0 grid gap-2.5 border-0 p-0">
           <legend>Subjects taught (optional)</legend>
           {subjects.length === 0 ? (
-            <p className="muted">There are no subjects yet. Create the account bare and assign subjects later.</p>
+            <p className="font-normal text-muted">There are no subjects yet. Create the account bare and assign subjects later.</p>
           ) : (
             subjects.map((subject) => (
-              <label className="checkbox-row" key={subject.id} htmlFor={`new-teach-${subject.id}`}>
+              <label className="flex items-center gap-[9px] font-semibold [&_input]:h-[17px] [&_input]:w-[17px] [&_input]:accent-[#455B8A]" key={subject.id} htmlFor={`new-teach-${subject.id}`}>
                 <input
                   id={`new-teach-${subject.id}`}
                   type="checkbox"
@@ -266,10 +266,10 @@ function CreateUserCard({ subjects, sections, onCreated }: { subjects: Subject[]
         <Input id="new-password" name="password" type="password" minLength={8} maxLength={72} required />
       </Field>
       <CanChangePasswordField role={role} defaultChecked id="new-can-change-password" />
-      <label className="checkbox-row" htmlFor="new-is-active">
+      <label className="flex items-center gap-[9px] font-semibold [&_input]:h-[17px] [&_input]:w-[17px] [&_input]:accent-[#455B8A]" htmlFor="new-is-active">
         <input id="new-is-active" name="is_active" type="checkbox" defaultChecked /> Active
       </label>
-      <div className="row-actions">
+      <div className="flex flex-wrap items-center gap-2">
         <Button type="submit" disabled={saving || pickProblems.length > 0}>{saving ? 'Creating…' : 'Create user'}</Button>
         <Button type="button" variant="secondary" onClick={() => { setOpen(false); setError(null); resetPicks(); }}>Cancel</Button>
       </div>
@@ -302,14 +302,14 @@ function ResetPasswordCard({ user, onReset }: { user: AdminUser; onReset: () => 
   }
 
   return (
-    <form className="form-stack" onSubmit={(event) => { void submit(event); }}>
+    <form className="mt-5 grid gap-[18px]" onSubmit={(event) => { void submit(event); }}>
       <h4>Reset password for {user.username}</h4>
       {error && <Alert>{error}</Alert>}
       {done && <Alert variant="success">{done}</Alert>}
       <Field label="New password (8 to 72 characters)" htmlFor={`reset-password-${user.id}`}>
         <Input id={`reset-password-${user.id}`} name="new_password" type="password" minLength={8} maxLength={72} required />
       </Field>
-      <div className="row-actions">
+      <div className="flex flex-wrap items-center gap-2">
         <Button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Reset password'}</Button>
       </div>
     </form>
@@ -353,17 +353,17 @@ function EnrollmentCard({ user, subjects, sections }: { user: AdminUser; subject
 
   if (user.role !== 'student') {
     return (
-      <section className="form-stack">
+      <section className="mt-5 grid gap-[18px]">
         <h4>Enrollment</h4>
-        <p className="muted">Enrollment applies to users with the student role. This account has the {user.role} role.</p>
+        <p className="font-normal text-muted">Enrollment applies to users with the student role. This account has the {user.role} role.</p>
       </section>
     );
   }
 
   return (
-    <form className="form-stack" onSubmit={(event) => { void submit(event); }}>
+    <form className="mt-5 grid gap-[18px]" onSubmit={(event) => { void submit(event); }}>
       <h4>Enrollment</h4>
-      <p className="page-intro">Each student belongs to exactly one section per enrolled subject. Saving moves the student out of any other section of the same subject.</p>
+      <p className="font-normal text-muted">Each student belongs to exactly one section per enrolled subject. Saving moves the student out of any other section of the same subject.</p>
       {error && <Alert>{error}</Alert>}
       {result && <Alert variant="success">{result}</Alert>}
       <Field label="Subject" htmlFor={`enrollment-subject-${user.id}`}>
@@ -391,7 +391,7 @@ function EnrollmentCard({ user, subjects, sections }: { user: AdminUser; subject
           {sectionsForSubject.map((section) => <option key={section.id} value={section.id}>{section.name}</option>)}
         </Select>
       </Field>
-      <div className="row-actions">
+      <div className="flex flex-wrap items-center gap-2">
         <Button type="submit" disabled={saving || !subjectId || !sectionId}>{saving ? 'Saving…' : 'Save enrollment'}</Button>
       </div>
     </form>
@@ -481,7 +481,7 @@ function DoctorSubjectsCard({ userId, username }: { userId: string; username: st
   const saveDisabled = saving || loading || !canSave({ doctorId: userId, subjectsLoaded: subjects !== null, assignmentsLoaded });
 
   return (
-    <section className="form-stack">
+    <section className="mt-5 grid gap-[18px]">
       <h4>Subjects taught</h4>
       {loading ? (
         <div><Spinner label="Loading subjects" /> Loading subjects…</div>
@@ -497,15 +497,15 @@ function DoctorSubjectsCard({ userId, username }: { userId: string; username: st
           ) : subjects.length === 0 ? (
             <EmptyState>There are no subjects yet, so there is nothing to assign. Create a subject first.</EmptyState>
           ) : (
-            <fieldset className="fieldset-reset">
+            <fieldset className="m-0 grid gap-2.5 border-0 p-0">
               <legend>Subjects assigned to {username}</legend>
-              <p className="muted">
+              <p className="font-normal text-muted">
                 {assignedCount === 0
                   ? 'None ticked. A doctor may teach several subjects — tick every one that applies. Saving with nothing ticked removes every subject from this doctor.'
                   : `${assignedCount} subject${assignedCount === 1 ? '' : 's'} ticked. A doctor may teach several subjects — tick every one that applies.`}
               </p>
               {subjects.map((subject) => (
-                <label className="checkbox-row" key={subject.id} htmlFor={`user-subject-${userId}-${subject.id}`}>
+                <label className="flex items-center gap-[9px] font-semibold [&_input]:h-[17px] [&_input]:w-[17px] [&_input]:accent-[#455B8A]" key={subject.id} htmlFor={`user-subject-${userId}-${subject.id}`}>
                   <input
                     id={`user-subject-${userId}-${subject.id}`}
                     type="checkbox"
@@ -518,7 +518,7 @@ function DoctorSubjectsCard({ userId, username }: { userId: string; username: st
               ))}
             </fieldset>
           )}
-          <div className="row-actions">
+          <div className="flex flex-wrap items-center gap-2">
             <Button onClick={() => { void save(); }} disabled={saveDisabled}>{saving ? 'Saving…' : 'Save subjects'}</Button>
           </div>
         </>
@@ -569,18 +569,18 @@ function StudentEnrollmentsCard({ userId }: { userId: string }) {
   }, [userId]);
 
   return (
-    <section className="form-stack">
+    <section className="mt-5 grid gap-[18px]">
       <h4>Enrolled subjects</h4>
       {loading ? (
         <div><Spinner label="Loading enrollments" /> Loading enrollments…</div>
       ) : error !== null ? (
         <Alert>{error}</Alert>
       ) : enrollments !== null && enrollments.length > 0 ? (
-        <ul className="pick-list">
+        <ul className="m-0 grid max-h-[340px] list-none gap-0.5 overflow-y-auto rounded-md border border-[#dfe5f0] bg-white p-1.5 [&_li:hover]:bg-[#edf0f6] [&_li]:rounded [&_li]:px-[7px] [&_li]:py-[5px]">
           {enrollments.map((enrollment) => (
             <li key={enrollment.subject.id}>
               {enrollment.subject.code} &mdash; {enrollment.subject.name}
-              <span className="muted"> — {enrollment.section ? enrollment.section.name : 'no section recorded'}</span>
+              <span className="font-normal text-muted"> — {enrollment.section ? enrollment.section.name : 'no section recorded'}</span>
             </li>
           ))}
         </ul>
@@ -628,18 +628,18 @@ function TaSectionsCard({ userId, username }: { userId: string; username: string
   }, [userId]);
 
   return (
-    <section className="form-stack">
+    <section className="mt-5 grid gap-[18px]">
       <h4>Sections taught</h4>
       {loading ? (
         <div><Spinner label="Loading sections" /> Loading sections…</div>
       ) : error !== null ? (
         <Alert>{error}</Alert>
       ) : groups !== null && groups.length > 0 ? (
-        <div className="form-stack">
+        <div className="mt-5 grid gap-[18px]">
           {groups.map((group) => (
             <div key={group.subject.id}>
-              <p className="column-title">{group.subject.code} &mdash; {group.subject.name}</p>
-              <ul className="pick-list">
+              <p className="font-bold">{group.subject.code} &mdash; {group.subject.name}</p>
+              <ul className="m-0 grid max-h-[340px] list-none gap-0.5 overflow-y-auto rounded-md border border-[#dfe5f0] bg-white p-1.5 [&_li:hover]:bg-[#edf0f6] [&_li]:rounded [&_li]:px-[7px] [&_li]:py-[5px]">
                 {group.sections.map((section) => <li key={section.id}>{section.name}</li>)}
               </ul>
             </div>
@@ -696,12 +696,12 @@ function UserDetailCard({
   }
 
   return (
-    <Card className="detail-card">
-      <div className="detail-card-head">
+    <Card className="mt-2 border-t-4 border-t-accent">
+      <div className="flex items-center justify-between gap-3">
         <h3>User detail — {user.username}</h3>
         <Button variant="text" onClick={onClose}>Close</Button>
       </div>
-      <form className="form-stack" onSubmit={(event) => { void submit(event); }}>
+      <form className="mt-5 grid gap-[18px]" onSubmit={(event) => { void submit(event); }}>
         {error && <Alert>{error}</Alert>}
         {done && <Alert variant="success">{done}</Alert>}
         <Field label="Full name" htmlFor={`detail-full-name-${user.id}`}>
@@ -721,11 +721,11 @@ function UserDetailCard({
           <Input id={`detail-student-code-${user.id}`} name="student_code" defaultValue={user.student_code ?? ''} maxLength={50} />
         </Field>
         <CanChangePasswordField role={role} defaultChecked={user.can_change_password} id={`detail-can-change-password-${user.id}`} />
-        <label className="checkbox-row" htmlFor={`detail-is-active-${user.id}`}>
+        <label className="flex items-center gap-[9px] font-semibold [&_input]:h-[17px] [&_input]:w-[17px] [&_input]:accent-[#455B8A]" htmlFor={`detail-is-active-${user.id}`}>
           <input id={`detail-is-active-${user.id}`} name="is_active" type="checkbox" defaultChecked={user.is_active} /> Active
         </label>
-        <p className="muted">Created {formatDateTime(user.created_at)}</p>
-        <div className="row-actions">
+        <p className="font-normal text-muted">Created {formatDateTime(user.created_at)}</p>
+        <div className="flex flex-wrap items-center gap-2">
           <Button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save changes'}</Button>
           <Link to={`/admin/permissions?user=${user.id}`}>Permission overrides for {user.username}</Link>
         </div>
@@ -850,12 +850,12 @@ export function AdminUsersPage() {
   return (
     <Card>
       <h2>Users</h2>
-      <p className="page-intro">Search and filter server-side, then open a user to edit the account, reset its password, manage enrollment, or assign a doctor&rsquo;s subjects.</p>
-      <div className="form-stack">
+      <p className="font-normal text-muted">Search and filter server-side, then open a user to edit the account, reset its password, manage enrollment, or assign a doctor&rsquo;s subjects.</p>
+      <div className="mt-5 grid gap-[18px]">
         {error && <Alert>{error}</Alert>}
         {notice && <Alert variant="success" >{notice}</Alert>}
 
-        <form className="filter-bar" onSubmit={applySearch}>
+        <form className="flex flex-wrap items-end gap-3 rounded-[14px] border border-[#dfe5f0] bg-white p-4 shadow-[0_4px_14px_rgb(36_52_80/7%)]" onSubmit={applySearch}>
           <Field label="Search users" htmlFor="user-search">
             <Input
               id="user-search"
@@ -882,7 +882,7 @@ export function AdminUsersPage() {
               {sectionsForFilter.map((section) => <option key={section.id} value={section.id}>{section.name}</option>)}
             </Select>
           </Field>
-          <div className="row-actions">
+          <div className="flex flex-wrap items-center gap-2">
             <Button type="submit" variant="secondary">Search</Button>
             <Button type="button" variant="text" onClick={() => { setSearchDraft(''); applyFilters(NO_FILTERS); }}>Clear filters</Button>
           </div>
@@ -929,7 +929,7 @@ export function AdminUsersPage() {
                     <td>{user.is_active ? 'Yes' : 'No'}</td>
                     <td>{formatDateTime(user.created_at)}</td>
                     <td>
-                      <div className="row-actions">
+                      <div className="flex flex-wrap items-center gap-2">
                         <Button variant="secondary" onClick={() => { setDetail(user); setResetTarget(null); }}>Open</Button>
                         <Button variant="secondary" onClick={() => { setResetTarget(user); setDetail(null); }}>Reset password</Button>
                         <Button
@@ -946,11 +946,11 @@ export function AdminUsersPage() {
               </tbody>
             </Table>
 
-            <div className="pager">
-              <span className="muted">Showing {from}–{to} of {total} users</span>
-              <div className="row-actions">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span className="font-normal text-muted">Showing {from}–{to} of {total} users</span>
+              <div className="flex flex-wrap items-center gap-2">
                 <Button variant="secondary" disabled={page <= 1} onClick={() => { setLoading(true); setPage((current) => Math.max(1, current - 1)); }}>Previous</Button>
-                <span className="muted">Page {page} of {lastPage}</span>
+                <span className="font-normal text-muted">Page {page} of {lastPage}</span>
                 <Button variant="secondary" disabled={page >= lastPage} onClick={() => { setLoading(true); setPage((current) => Math.min(lastPage, current + 1)); }}>Next</Button>
               </div>
             </div>

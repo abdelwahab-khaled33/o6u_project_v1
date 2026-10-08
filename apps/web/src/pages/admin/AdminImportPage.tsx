@@ -104,8 +104,8 @@ export function AdminImportPage() {
   return (
     <Card>
       <h2>Excel user import</h2>
-      <p className="page-intro">Review the dry-run report before committing. Commit remains available only for the same file that was checked.</p>
-      <form className="form-stack" onSubmit={(event) => { void dryRun(event); }}>
+      <p className="font-normal text-muted">Review the dry-run report before committing. Commit remains available only for the same file that was checked.</p>
+      <form className="mt-5 grid gap-[18px]" onSubmit={(event) => { void dryRun(event); }}>
         <Field label="Excel file" htmlFor="user-import-file">
           <Input
             id="user-import-file"
@@ -117,7 +117,7 @@ export function AdminImportPage() {
         </Field>
         <div><Button type="submit" variant="secondary" disabled={!file || loading}>{loading ? 'Checking…' : 'Run dry run'}</Button></div>
       </form>
-      <div className="form-stack">
+      <div className="mt-5 grid gap-[18px]">
         {error && <Alert>{error}</Alert>}
         {success && <Alert variant="success">{success}</Alert>}
         {loading && <div><Spinner label="Processing import" /> Processing import…</div>}
@@ -127,7 +127,7 @@ export function AdminImportPage() {
             {counts.length > 0 ? (
               <ul>{counts.map(([key, value]) => <li key={key}>{key.replaceAll('_', ' ')}: {String(value)}</li>)}</ul>
             ) : (
-              <p className="muted">No count fields were included in the response.</p>
+              <p className="font-normal text-muted">No count fields were included in the response.</p>
             )}
             <h3>Row errors</h3>
             {rowErrors.length > 0 ? (

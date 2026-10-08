@@ -9,6 +9,7 @@ import { Field, Input, Select } from '../../components/ui/Field';
 import { Spinner } from '../../components/ui/Spinner';
 import { Table } from '../../components/ui/Table';
 import { api } from '../../lib/api';
+import { STATUS_PILL, statusTone } from '../../lib/statusTone';
 import { useAuth } from '../../hooks/useAuth';
 import { describeError, EmptyState, formatDateTime, humanise, plural } from '../admin/adminShared';
 import type { ExamDetail } from '../doctor/doctorExamTypes';
@@ -152,20 +153,20 @@ export function ExamLivePage() {
   return (
     <div>
       <Card>
-        <p className="muted">
+        <p className="font-normal text-muted">
           <Link to={back.to}>{back.label}</Link>
         </p>
-        <div className="results-head">
+        <div className="flex flex-wrap items-start justify-between gap-x-5 gap-y-3">
           <div>
             <h2>{exam ? `Live monitoring — ${exam.title}` : 'Live monitoring'}</h2>
             {exam && (
-              <p className="page-intro">
+              <p className="font-normal text-muted">
                 {exam.subject.code} — {exam.subject.name} · open {formatDateTime(exam.start_time)} to{' '}
                 {formatDateTime(exam.end_time)}
               </p>
             )}
           </div>
-          <div className="row-actions">
+          <div className="flex flex-wrap items-center gap-2">
             <Button variant="secondary" disabled={loading} onClick={() => { void load(); }}>
               Refresh
             </Button>
@@ -179,7 +180,7 @@ export function ExamLivePage() {
         ) : loadError ? (
           <Alert>{loadError}</Alert>
         ) : (
-          <div className="form-stack">
+          <div className="mt-5 grid gap-[18px]">
             {actionError && <Alert>{actionError}</Alert>}
             {notice && <Alert variant="success">{notice}</Alert>}
             {attemptsError && <Alert variant="info">{attemptsError}</Alert>}
@@ -191,32 +192,32 @@ export function ExamLivePage() {
               </Alert>
             ) : (
               <>
-                <div className="results-stats">
-                  <span className="stat">
-                    <span className="tally-label">Attempts</span>{' '}
-                    <strong className="tally-value">{census.total}</strong>
+                <div className="flex flex-wrap gap-x-7 gap-y-2">
+                  <span className="flex items-baseline gap-2">
+                    <span className="text-[0.8rem] font-bold uppercase tracking-[0.05em] text-muted">Attempts</span>{' '}
+                    <strong className="font-extrabold tabular-nums">{census.total}</strong>
                   </span>
-                  <span className="stat">
-                    <span className="tally-label">In progress</span>{' '}
-                    <strong className="tally-value">{census.in_progress}</strong>
+                  <span className="flex items-baseline gap-2">
+                    <span className="text-[0.8rem] font-bold uppercase tracking-[0.05em] text-muted">In progress</span>{' '}
+                    <strong className="font-extrabold tabular-nums">{census.in_progress}</strong>
                   </span>
-                  <span className="stat">
-                    <span className="tally-label">Submitted</span>{' '}
-                    <strong className="tally-value">{census.submitted}</strong>
+                  <span className="flex items-baseline gap-2">
+                    <span className="text-[0.8rem] font-bold uppercase tracking-[0.05em] text-muted">Submitted</span>{' '}
+                    <strong className="font-extrabold tabular-nums">{census.submitted}</strong>
                   </span>
-                  <span className="stat">
-                    <span className="tally-label">Auto submitted</span>{' '}
-                    <strong className="tally-value">{census.auto_submitted}</strong>
+                  <span className="flex items-baseline gap-2">
+                    <span className="text-[0.8rem] font-bold uppercase tracking-[0.05em] text-muted">Auto submitted</span>{' '}
+                    <strong className="font-extrabold tabular-nums">{census.auto_submitted}</strong>
                   </span>
-                  <span className="stat">
-                    <span className="tally-label">Not started</span>{' '}
-                    <strong className="tally-value">{census.not_started}</strong>
+                  <span className="flex items-baseline gap-2">
+                    <span className="text-[0.8rem] font-bold uppercase tracking-[0.05em] text-muted">Not started</span>{' '}
+                    <strong className="font-extrabold tabular-nums">{census.not_started}</strong>
                   </span>
                 </div>
 
-                <div className="results-toolbar">
+                <div className="flex flex-wrap items-end gap-3.5">
                   <Field label="Search" htmlFor="live-search">
-                    <span className="search-wrap">
+                    <span className="relative block [&_input]:w-full [&_input]:pr-[34px] [&_svg]:pointer-events-none [&_svg]:absolute [&_svg]:right-[11px] [&_svg]:top-1/2 [&_svg]:-translate-y-1/2 [&_svg]:text-muted">
                       <Input
                         id="live-search"
                         value={query}
@@ -246,7 +247,7 @@ export function ExamLivePage() {
                   </Field>
                 </div>
 
-                <p className="muted">
+                <p className="font-normal text-muted">
                   A student counts as online only if the server saw a heartbeat from them in the
                   last minute, and that is decided when this page loads — loaded{' '}
                   {loadedAt === null ? 'just now' : `at ${formatDateTime(new Date(loadedAt).toISOString())}`}.
@@ -291,10 +292,10 @@ export function ExamLivePage() {
                               <td>{index + 1}</td>
                               <td>
                                 <div>{attempt.student.full_name}</div>
-                                <div className="muted">{attempt.student.student_code ?? '—'}</div>
+                                <div className="font-normal text-muted">{attempt.student.student_code ?? '—'}</div>
                               </td>
                               <td>
-                                <span className={`status status--${attempt.status}`}>
+                                <span className={`${STATUS_PILL} ${statusTone(attempt.status)}`}>
                                   {humanise(attempt.status)}
                                 </span>
                               </td>
@@ -302,17 +303,17 @@ export function ExamLivePage() {
                               <td>
                                 <div>{formatDateTime(attempt.deadline_at)}</div>
                                 {deadline !== '' && (
-                                  <div className="muted">
+                                  <div className="font-normal text-muted">
                                     {deadline === 'Overdue' ? 'Overdue' : 'Due soon'}
                                   </div>
                                 )}
                               </td>
-                              <td className="muted">{attempt.has_active_session ? 'Active' : 'None'}</td>
-                              <td className="muted">{connection}</td>
+                              <td className="font-normal text-muted">{attempt.has_active_session ? 'Active' : 'None'}</td>
+                              <td className="font-normal text-muted">{connection}</td>
                               <td>
                                 {releasingId === attempt.student_exam_id ? (
-                                  <div className="row-actions">
-                                    <span className="muted">Release this session?</span>
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="font-normal text-muted">Release this session?</span>
                                     <Button
                                       variant="danger"
                                       disabled={busy}

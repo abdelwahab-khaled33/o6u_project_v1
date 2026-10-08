@@ -75,14 +75,14 @@ export function ExamAccessCodePage() {
   return (
     <div>
       <Card>
-        <p className="muted">
+        <p className="font-normal text-muted">
           <Link to="/doctor/exams">Back to exams</Link>
         </p>
-        <div className="results-head">
+        <div className="flex flex-wrap items-start justify-between gap-x-5 gap-y-3">
           <div>
             <h2>{exam ? `Access code — ${exam.title}` : 'Access code'}</h2>
             {exam && (
-              <p className="page-intro">
+              <p className="font-normal text-muted">
                 {exam.subject.code} — {exam.subject.name} · {exam.type === 'doctor_exam' ? 'Exam' : 'Quiz'} ·{' '}
                 {humanise(exam.status)} · open {formatDateTime(exam.start_time)} to{' '}
                 {formatDateTime(exam.end_time)}
@@ -98,14 +98,14 @@ export function ExamAccessCodePage() {
         ) : loadError ? (
           <Alert>{loadError}</Alert>
         ) : (
-          <div className="form-stack">
+          <div className="mt-5 grid gap-[18px]">
             {view.kind === 'code' && (
               <>
                 <p>
                   Access code <strong>{view.code}</strong>
                 </p>
-                <p className="muted">{codeExpiryText(view.expiresAt, now, formatDateTime)}</p>
-                <p className="muted">
+                <p className="font-normal text-muted">{codeExpiryText(view.expiresAt, now, formatDateTime)}</p>
+                <p className="font-normal text-muted">
                   Students type this to start the exam. It is shown here and nowhere else, and this
                   page only fetches it when you open it.
                 </p>

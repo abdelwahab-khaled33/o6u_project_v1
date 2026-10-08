@@ -7,6 +7,7 @@ import { Card } from '../../components/ui/Card';
 import { Field, Input } from '../../components/ui/Field';
 import { Spinner } from '../../components/ui/Spinner';
 import { api } from '../../lib/api';
+import { STATUS_PILL, statusTone } from '../../lib/statusTone';
 import { describeError, EmptyState, formatDateTime, humanise } from './adminShared';
 import {
   answerabilityProblem,
@@ -43,29 +44,29 @@ function QuestionCard({ entry, index }: { entry: { question: ReviewQuestion }; i
   const problem = answerabilityProblem(question);
   const options = Array.isArray(question.options) ? question.options.map(String) : [];
   return (
-    <section className="question-card" aria-label={`Question ${index + 1}`}>
-      <div className="question-head">
-        <span className="question-index">Question {index + 1}</span>
-        <span className="status">{humanise(question.question_type)}</span>
-        <span className="status">{humanise(question.difficulty)}</span>
-        <span className="muted">Grade {formatReviewGrade(question.grade)}</span>
-        {question.is_archived && <span className="status status--rejected">Archived</span>}
+    <section className="grid gap-3.5 rounded-xl border border-[#dfe5f0] bg-white p-6 shadow-[0_4px_12px_rgb(36_52_80/5%)]" aria-label={`Question ${index + 1}`}>
+      <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2.5">
+        <span className="font-extrabold text-primary-dark">Question {index + 1}</span>
+        <span className={`${STATUS_PILL} border-[#dfe5f0] bg-[#edf0f6] text-muted`}>{humanise(question.question_type)}</span>
+        <span className={`${STATUS_PILL} border-[#dfe5f0] bg-[#edf0f6] text-muted`}>{humanise(question.difficulty)}</span>
+        <span className="font-normal text-muted">Grade {formatReviewGrade(question.grade)}</span>
+        {question.is_archived && <span className={`${STATUS_PILL} ${statusTone('rejected')}`}>Archived</span>}
       </div>
-      <p className="question-body">{question.text}</p>
+      <p className="font-semibold">{question.text}</p>
       {question.image_url && (
-        <img className="question-image" src={question.image_url} alt={`Illustration for question ${index + 1}`} />
+        <img className="max-h-[260px] w-full max-w-full rounded-md border border-[#dfe5f0]" src={question.image_url} alt={`Illustration for question ${index + 1}`} />
       )}
       {options.length > 0 && (
-        <ul className="option-preview">
+        <ul className="grid gap-[3px] pl-5 font-normal text-muted">
           {options.map((option) => (
-            <li key={option} className={option === question.correct_answer ? 'is-correct' : undefined}>
+            <li key={option} className={option === question.correct_answer ? 'font-bold text-[#147a47]' : undefined}>
               {option}{option === question.correct_answer ? ' — correct answer' : ''}
             </li>
           ))}
         </ul>
       )}
       {question.question_type === 'true_false' && (
-        <p className="muted">Correct answer: {question.correct_answer}</p>
+        <p className="font-normal text-muted">Correct answer: {question.correct_answer}</p>
       )}
       {problem !== null && <Alert>{problem}</Alert>}
     </section>
@@ -166,14 +167,14 @@ export function AdminExamReviewPage() {
   const problemCount = problems.filter((problem) => problem !== null).length;
 
   return (
-    <div className="page">
+    <div className="grid content-start gap-5">
       <p><Link to="/admin/exams">Back to Exams</Link></p>
       <Card>
         <h2>{exam.title}</h2>
-        <p className="page-intro">
+        <p className="font-normal text-muted">
           {humanise(exam.type)} in {exam.subject.code} — {exam.subject.name}, owned by {exam.owner.full_name}.
         </p>
-        <dl className="review-list">
+        <dl className="m-0 grid gap-0 [overflow-wrap:anywhere] [&_dd]:m-0 [&_div]:grid [&_div]:gap-3.5 [&_div]:border-b [&_div]:border-[#dfe5f0] [&_div]:py-[9px] [&_div]:[grid-template-columns:190px_1fr] [&_dt]:font-semibold [&_dt]:text-muted max-md:[&_div]:grid-cols-1">
           <div><dt>Status</dt><dd>{humanise(exam.status)}</dd></div>
           <div><dt>Starts</dt><dd>{formatDateTime(exam.start_time)}</dd></div>
           <div><dt>Ends</dt><dd>{formatDateTime(exam.end_time)}</dd></div>
@@ -190,13 +191,13 @@ export function AdminExamReviewPage() {
 
       <Card>
         <h2>Edit exam</h2>
-        <p className="page-intro">
+        <p className="font-normal text-muted">
           Title, schedule, duration and points. The question pool and targets stay with the owning doctor —
           this screen never touches them.
         </p>
         {saveError && <Alert>{saveError}</Alert>}
         {saved && <Alert variant="success">{saved}</Alert>}
-        <form className="form-stack" onSubmit={(event) => { void save(event); }}>
+        <form className="mt-5 grid gap-[18px]" onSubmit={(event) => { void save(event); }}>
           <Field label="Title" htmlFor="review-title">
             <Input id="review-title" value={draft.title} onChange={(event) => updateDraft('title', event.target.value)} required />
           </Field>
@@ -212,7 +213,7 @@ export function AdminExamReviewPage() {
           <Field label="Points per question" htmlFor="review-points">
             <Input id="review-points" type="number" min={0.01} step={0.01} value={draft.pointsPerQuestion} onChange={(event) => updateDraft('pointsPerQuestion', event.target.value)} required />
           </Field>
-          <div className="row-actions">
+          <div className="flex flex-wrap items-center gap-2">
             <Button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save changes'}</Button>
           </div>
         </form>

@@ -95,5 +95,5 @@ export function describeError(error: unknown): string {
 }
 
 export function EmptyState({ children }: { children: string }) {
-  return <p className="muted">{children}</p>;
+  return <p className="font-normal text-muted">{children}</p>;
 }

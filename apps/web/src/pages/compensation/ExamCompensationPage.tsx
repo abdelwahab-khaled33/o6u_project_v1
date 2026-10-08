@@ -206,18 +206,18 @@ export function ExamCompensationPage() {
   }
 
   return (
-    <div className="form-stack">
+    <div className="mt-5 grid gap-[18px]">
       <Card>
         {back && (
-          <p className="muted">
+          <p className="font-normal text-muted">
             <Link to={back.to}>{back.label}</Link>
           </p>
         )}
-        <div className="results-head">
+        <div className="flex flex-wrap items-start justify-between gap-x-5 gap-y-3">
           <div>
             <h2>{exam ? `Compensate grades — ${exam.title}` : 'Compensate grades'}</h2>
             {exam && (
-              <p className="page-intro">
+              <p className="font-normal text-muted">
                 {exam.subject.code} — {exam.subject.name} · {exam.type === 'doctor_exam' ? 'Exam' : 'Quiz'} by{' '}
                 {exam.owner.full_name} · {formatPoints(pointsValue(exam.points_per_question))} points per question
               </p>
@@ -232,10 +232,10 @@ export function ExamCompensationPage() {
         ) : loadError ? (
           <Alert>{loadError}</Alert>
         ) : exam ? (
-          <div className="form-stack">
+          <div className="mt-5 grid gap-[18px]">
             {!gate.allowed && <Alert variant="info">{gate.reason}</Alert>}
 
-            <fieldset className="fieldset-reset" disabled={!gate.allowed}>
+            <fieldset className="m-0 grid gap-2.5 border-0 p-0" disabled={!gate.allowed}>
               <legend>New compensation</legend>
 
               <Field label="Question to compensate" htmlFor="comp-question">
@@ -253,10 +253,10 @@ export function ExamCompensationPage() {
                 </Select>
               </Field>
 
-              <fieldset className="ui-field fieldset-reset">
+              <fieldset className="m-0 grid gap-2.5 border-0 p-0 text-[0.94rem] font-semibold text-[#1f2430]">
                 <legend>Adjustment</legend>
                 {TYPE_OPTIONS.map((option) => (
-                  <label className="scope-row" key={option.value}>
+                  <label className="flex items-start gap-2.5 py-[7px] font-semibold [&_input]:mt-[3px] [&_input]:h-[17px] [&_input]:w-[17px] [&_input]:flex-none [&_input]:accent-[#455B8A]" key={option.value}>
                     <input
                       type="radio"
                       name="adjustment-type"
@@ -268,7 +268,7 @@ export function ExamCompensationPage() {
                     />
                     <span>
                       {option.label}
-                      <span className="option-preview">{option.help}</span>
+                      <span className="grid gap-[3px] pl-5 font-normal text-muted">{option.help}</span>
                     </span>
                   </label>
                 ))}
@@ -286,7 +286,7 @@ export function ExamCompensationPage() {
                     placeholder="for example 1.5"
                     onChange={(event) => setDraft({ ...draft, points: event.target.value })}
                   />
-                  <span className="option-preview">
+                  <span className="grid gap-[3px] pl-5 font-normal text-muted">
                     Between 0 and {MAX_POINTS}, with at most 2 decimal places. This is the storage ceiling, not a
                     policy limit: the exam scores {formatPoints(pointsValue(exam.points_per_question))} per question,
                     and the specification does not settle whether a question may be worth more than that.
@@ -294,9 +294,9 @@ export function ExamCompensationPage() {
                 </Field>
               )}
 
-              <fieldset className="ui-field fieldset-reset">
+              <fieldset className="m-0 grid gap-2.5 border-0 p-0 text-[0.94rem] font-semibold text-[#1f2430]">
                 <legend>Who it applies to</legend>
-                <label className="scope-row">
+                <label className="flex items-start gap-2.5 py-[7px] font-semibold [&_input]:mt-[3px] [&_input]:h-[17px] [&_input]:w-[17px] [&_input]:flex-none [&_input]:accent-[#455B8A]">
                   <input
                     type="radio"
                     name="comp-scope"
@@ -305,13 +305,13 @@ export function ExamCompensationPage() {
                   />
                   <span>
                     Everyone who received this question
-                    <span className="option-preview">
+                    <span className="grid gap-[3px] pl-5 font-normal text-muted">
                       Every student whose sample included it. This is the wider of the two, so it is never selected
                       for you.
                     </span>
                   </span>
                 </label>
-                <label className="scope-row">
+                <label className="flex items-start gap-2.5 py-[7px] font-semibold [&_input]:mt-[3px] [&_input]:h-[17px] [&_input]:w-[17px] [&_input]:flex-none [&_input]:accent-[#455B8A]">
                   <input
                     type="radio"
                     name="comp-scope"
@@ -320,7 +320,7 @@ export function ExamCompensationPage() {
                   />
                   <span>
                     Specific students only
-                    <span className="option-preview">
+                    <span className="grid gap-[3px] pl-5 font-normal text-muted">
                       {attempts === null
                         ? 'The attempt list could not be loaded, so there is nothing to choose from here.'
                         : attempts.length === 0
@@ -332,11 +332,11 @@ export function ExamCompensationPage() {
               </fieldset>
 
               {draft.scope === 'all' && chosenQuestion && (
-                <p className="comp-warn">{cohortWarning(chosenQuestion.text, attempts?.length ?? null)}</p>
+                <p className="rounded-xl border border-[#f2c79a] border-l-4 border-l-accent bg-[#fff8f0] px-[15px] py-[13px] font-normal">{cohortWarning(chosenQuestion.text, attempts?.length ?? null)}</p>
               )}
 
               {draft.scope === 'selected' && (
-                <div className="ui-field">
+                <div className="grid gap-[7px] text-[0.94rem] font-semibold text-[#1f2430]">
                   <Field label="Search students" htmlFor="comp-student-search">
                     <Input
                       id="comp-student-search"
@@ -348,34 +348,34 @@ export function ExamCompensationPage() {
                   {attemptsError ? (
                     <Alert>{attemptsError}</Alert>
                   ) : attempts === null ? (
-                    <p className="muted">The attempt list could not be loaded.</p>
+                    <p className="font-normal text-muted">The attempt list could not be loaded.</p>
                   ) : visibleAttempts.length === 0 ? (
-                    <p className="muted">
+                    <p className="font-normal text-muted">
                       {attempts.length === 0
                         ? 'No attempts are on file for this exam.'
                         : 'No students match this search.'}
                     </p>
                   ) : (
                     <>
-                      <ul className="pick-list">
+                      <ul className="m-0 grid max-h-[340px] list-none gap-0.5 overflow-y-auto rounded-md border border-[#dfe5f0] bg-white p-1.5 [&_li:hover]:bg-[#edf0f6] [&_li]:rounded [&_li]:px-[7px] [&_li]:py-[5px]">
                         {visibleAttempts.map((attempt) => (
                           <li key={attempt.student_exam_id}>
-                            <label className="checkbox-row">
+                            <label className="flex items-center gap-[9px] font-semibold [&_input]:h-[17px] [&_input]:w-[17px] [&_input]:accent-[#455B8A]">
                               <input
                                 type="checkbox"
                                 checked={draft.studentExamIds.includes(attempt.student_exam_id)}
                                 onChange={() => toggleStudent(attempt.student_exam_id)}
                               />
                               <span>
-                                <span className="pick-meta">{humanise(attempt.status)}</span>
+                                <span className="w-[62px] flex-none text-[0.8rem] font-bold capitalize text-primary">{humanise(attempt.status)}</span>
                                 {attempt.student.full_name}
-                                <span className="muted"> {attempt.student.student_code ?? '—'}</span>
+                                <span className="font-normal text-muted"> {attempt.student.student_code ?? '—'}</span>
                               </span>
                             </label>
                           </li>
                         ))}
                       </ul>
-                      <span className="option-preview">
+                      <span className="grid gap-[3px] pl-5 font-normal text-muted">
                         {draft.studentExamIds.length === 0
                           ? 'Nobody is selected yet.'
                           : `${plural(draft.studentExamIds.length, 'students')} selected.`}
@@ -395,19 +395,19 @@ export function ExamCompensationPage() {
               </Field>
 
               {problems.length > 0 && (
-                <ul className="requirement-list">
+                <ul className="m-0 grid gap-1 pl-5 font-normal text-muted">
                   {problems.map((problem) => (
                     <li key={problem}>{problem}</li>
                   ))}
                 </ul>
               )}
 
-              <div className="row-actions">
+              <div className="flex flex-wrap items-center gap-2">
                 <Button type="button" disabled={blocked || submitting} onClick={() => void submit()}>
                   {submitting ? 'Applying…' : 'Apply compensation'}
                 </Button>
                 {gate.allowed && problems.length === 0 && (
-                  <span className="muted">
+                  <span className="font-normal text-muted">
                     This writes an audit row per affected student and cannot be undone from here.
                   </span>
                 )}
@@ -430,10 +430,10 @@ export function ExamCompensationPage() {
 
       <Card>
         <h3>Audit trail</h3>
-        <p className="muted">
+        <p className="font-normal text-muted">
           Every compensation ever applied to this exam, newest first, with who did it and why.
         </p>
-        <div className="stacked-card">
+        <div className="mt-5">
           {trailError ? (
             <Alert>{trailError}</Alert>
           ) : loading ? (
@@ -441,11 +441,11 @@ export function ExamCompensationPage() {
               <Spinner label="Loading audit trail" /> Loading…
             </div>
           ) : trail.length === 0 ? (
-            <p className="muted">No grade compensation has been applied to this exam.</p>
+            <p className="font-normal text-muted">No grade compensation has been applied to this exam.</p>
           ) : (
             <>
               {attempts === null && (
-                <p className="option-preview">{AUDIT_PENDING_UNKNOWN}</p>
+                <p className="grid gap-[3px] pl-5 font-normal text-muted">{AUDIT_PENDING_UNKNOWN}</p>
               )}
               <Table>
               <thead>
@@ -464,24 +464,24 @@ export function ExamCompensationPage() {
                     <td>{formatDateTime(row.created_at)}</td>
                     <td>{row.actor_name}</td>
                     <td>
-                      <div className="question-text">{row.student_name}</div>
-                      <span className="muted">{row.student_code ?? '—'}</span>
+                      <div className="max-w-[460px] [overflow-wrap:anywhere]">{row.student_name}</div>
+                      <span className="font-normal text-muted">{row.student_code ?? '—'}</span>
                     </td>
                     <td>
-                      <div className="question-text">{row.question_text}</div>
-                      <span className="muted">{row.adjustment_type === 'full_credit' ? 'full credit' : 'fixed points'}</span>
+                      <div className="max-w-[460px] [overflow-wrap:anywhere]">{row.question_text}</div>
+                      <span className="font-normal text-muted">{row.adjustment_type === 'full_credit' ? 'full credit' : 'fixed points'}</span>
                     </td>
-                    <td className="grade-cell">
+                    <td className="font-bold tabular-nums">
                       <span>
                         {formatPoints(row.previous_points)} → {formatPoints(row.new_points)}
                       </span>{' '}
-                      <span className={row.delta > 0 ? 'delta delta--up' : row.delta < 0 ? 'delta delta--down' : 'delta'}>
+                      <span className={row.delta > 0 ? 'inline-block whitespace-nowrap rounded-full border border-[#a8d7bd] bg-[#effaf3] px-[9px] py-[1px] text-[0.82rem] font-bold text-[#147a47]' : row.delta < 0 ? 'inline-block whitespace-nowrap rounded-full border border-[#f0b5b0] bg-[#fff1f0] px-[9px] py-[1px] text-[0.82rem] font-bold text-[#b42318]' : 'inline-block whitespace-nowrap rounded-full border border-[#dfe5f0] bg-[#edf0f6] px-[9px] py-[1px] text-[0.82rem] font-bold text-muted'}>
                         {signedDelta(row.delta)}
                       </span>
-                      {row.pending && <span className="pending-tag">{PENDING_TAG}</span>}
+                      {row.pending && <span className="mt-[5px] block whitespace-normal text-[0.8rem] font-semibold text-accent">{PENDING_TAG}</span>}
                     </td>
                     <td>
-                      <div className="question-text">{row.reason}</div>
+                      <div className="max-w-[460px] [overflow-wrap:anywhere]">{row.reason}</div>
                     </td>
                   </tr>
                 ))}

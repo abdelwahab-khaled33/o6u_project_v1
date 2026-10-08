@@ -59,13 +59,13 @@ export function AdminTermResetPage() {
   return (
     <Card>
       <h2>Term reset</h2>
-      <p className="page-intro">
+      <p className="font-normal text-muted">
         Deletes this term's exams, attempts, questions, sections, enrollments and non-admin accounts. Admin accounts, subjects and permission defaults are preserved. This cannot be undone.
       </p>
       {error && <Alert>{error}</Alert>}
 
       {result && (
-        <div className="form-stack">
+        <div className="mt-5 grid gap-[18px]">
           <Alert variant="success">Term reset completed. The following records were deleted.</Alert>
           {result.warnings.length > 0 && (
             <Alert variant="info">
@@ -86,11 +86,11 @@ export function AdminTermResetPage() {
         </div>
       )}
 
-      <div className="form-stack">
+      <div className="mt-5 grid gap-[18px]">
         {loading ? (
           <div><Spinner label="Loading term reset preview" /> Loading preview…</div>
         ) : !preview ? (
-          <p className="muted">The term reset preview is unavailable.</p>
+          <p className="font-normal text-muted">The term reset preview is unavailable.</p>
         ) : (
           <>
             <Table>
@@ -102,10 +102,10 @@ export function AdminTermResetPage() {
               </tbody>
             </Table>
 
-            <form className="form-stack" onSubmit={(event) => { void submit(event); }}>
+            <form className="mt-5 grid gap-[18px]" onSubmit={(event) => { void submit(event); }}>
               <h3>Confirm the reset</h3>
-              <p className="page-intro">
-                Type <code className="confirmation-phrase">{phrase}</code> to confirm.
+              <p className="font-normal text-muted">
+                Type <code className="rounded border border-[#dfe5f0] bg-[#edf0f6] px-[7px] py-[1px] font-mono">{phrase}</code> to confirm.
               </p>
               <Field label="Confirmation phrase" htmlFor="term-reset-confirmation">
                 <Input
@@ -116,7 +116,7 @@ export function AdminTermResetPage() {
                   autoComplete="off"
                 />
               </Field>
-              <div className="row-actions">
+              <div className="flex flex-wrap items-center gap-2">
                 <Button type="submit" variant="danger" disabled={!matches || resetting}>
                   {resetting ? 'Resetting…' : 'Reset the term'}
                 </Button>

@@ -114,20 +114,20 @@ function Coverage({ tier, required, selected, available }: {
 }) {
   const enough = required === 0 || selected >= required;
   return (
-    <div className="coverage" key={tier}>
-      <div className="coverage-head">
-        <span className="coverage-tier">{tier}</span>
-        <span className={enough ? 'coverage-count' : 'coverage-count is-short'}>
+    <div className="grid gap-[5px] rounded-md border border-[#dfe5f0] bg-[#edf0f6] px-3 py-2.5" key={tier}>
+      <div className="flex items-baseline justify-between gap-2.5">
+        <span className="font-semibold capitalize text-primary-dark">{tier}</span>
+        <span className={enough ? 'text-[0.85rem] font-bold text-[#147a47]' : 'text-[0.85rem] font-bold text-[#b42318]'}>
           {selected} selected of {required} required
         </span>
       </div>
-      <div className="coverage-bar" aria-hidden="true">
+      <div className="h-1.5 overflow-hidden rounded bg-[#e3e8f2]" aria-hidden="true">
         <div
-          className={enough ? 'coverage-fill' : 'coverage-fill is-short'}
+          className={enough ? 'h-full bg-[#147a47]' : 'h-full bg-[#b42318]'}
           style={{ width: `${required === 0 ? 100 : Math.min(100, (selected / required) * 100)}%` }}
         />
       </div>
-      <span className="muted">{available} in your bank at this difficulty</span>
+      <span className="font-normal text-muted">{available} in your bank at this difficulty</span>
     </div>
   );
 }
@@ -284,7 +284,7 @@ export function ExamWizard({ examId }: { examId?: string }) {
   }
 
   return (
-    <form className="form-stack" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
+    <form className="mt-5 grid gap-[18px]" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
       {error && <Alert>{error}</Alert>}
 
       {subjects.length === 0 ? (
@@ -298,10 +298,10 @@ export function ExamWizard({ examId }: { examId?: string }) {
       ) : (
         <>
           <Card>
-            <div className="step-head">
-              <h2><span className="step-number">1</span> Subject and title</h2>
+            <div className="flex items-center gap-3 border-b border-[#dfe5f0] pb-3">
+              <h2><span className="grid h-[26px] w-[26px] flex-none place-items-center rounded-full bg-primary text-[0.82rem] text-white">1</span> Subject and title</h2>
             </div>
-            <div className="form-stack">
+            <div className="mt-5 grid gap-[18px]">
               <Field label="Subject" htmlFor="wizard-subject">
                 <Select
                   id="wizard-subject"
@@ -320,7 +320,7 @@ export function ExamWizard({ examId }: { examId?: string }) {
                 </Select>
               </Field>
               {editing && (
-                <p className="muted">
+                <p className="font-normal text-muted">
                   The subject is fixed: an exam cannot move between subjects, because its questions, its
                   targets and its generated attempts all belong to the subject it was created in.
                 </p>
@@ -335,24 +335,24 @@ export function ExamWizard({ examId }: { examId?: string }) {
                   required
                 />
               </Field>
-              <span className="muted">Between 2 and {TITLE_MAX} characters. Students see this title.</span>
+              <span className="font-normal text-muted">Between 2 and {TITLE_MAX} characters. Students see this title.</span>
             </div>
           </Card>
 
           <Card>
-            <div className="step-head">
-              <h2><span className="step-number">2</span> Question pool and difficulty mix</h2>
+            <div className="flex items-center gap-3 border-b border-[#dfe5f0] pb-3">
+              <h2><span className="grid h-[26px] w-[26px] flex-none place-items-center rounded-full bg-primary text-[0.82rem] text-white">2</span> Question pool and difficulty mix</h2>
             </div>
-            <p className="page-intro">
+            <p className="font-normal text-muted">
               The pool is the set of questions the exam draws from. Each student is then given their own
               sample matching the mix you set here, with the questions and their options in a different order
               for every student.
             </p>
 
-            <div className="form-stack">
-              <fieldset className="fieldset-reset">
-                <legend className="muted">How many questions of each difficulty should each student answer?</legend>
-                <div className="mix-row">
+            <div className="mt-5 grid gap-[18px]">
+              <fieldset className="m-0 grid gap-2.5 border-0 p-0">
+                <legend className="font-normal text-muted">How many questions of each difficulty should each student answer?</legend>
+                <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(165px,1fr))]">
                   {DIFFICULTIES.map((tier) => (
                     <Field key={tier} label={tier} htmlFor={`wizard-mix-${tier}`}>
                       <Input
@@ -367,7 +367,7 @@ export function ExamWizard({ examId }: { examId?: string }) {
                     </Field>
                   ))}
                 </div>
-                <div className="coverage-row">
+                <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(210px,1fr))]">
                   {DIFFICULTIES.map((tier) => (
                     <Coverage
                       key={tier}
@@ -379,14 +379,14 @@ export function ExamWizard({ examId }: { examId?: string }) {
                   ))}
                 </div>
                 {selectedArchived.length > 0 && (
-                  <p className="muted">
+                  <p className="font-normal text-muted">
                     {archivedPoolProblem(selectedArchived.length)} The counts above count only
                     questions that can still be used.
                   </p>
                 )}
               </fieldset>
 
-              <div className="filter-bar">
+              <div className="flex flex-wrap items-end gap-3 rounded-[14px] border border-[#dfe5f0] bg-white p-4 shadow-[0_4px_14px_rgb(36_52_80/7%)]">
                 <Field label="Show" htmlFor="wizard-bank-difficulty">
                   <Select
                     id="wizard-bank-difficulty"
@@ -397,7 +397,7 @@ export function ExamWizard({ examId }: { examId?: string }) {
                     {DIFFICULTIES.map((tier) => <option key={tier} value={tier}>{tier}</option>)}
                   </Select>
                 </Field>
-                <div className="row-actions">
+                <div className="flex flex-wrap items-center gap-2">
                   <Button type="button" variant="secondary" onClick={selectVisible} disabled={visibleBank.length === 0}>
                     Select all shown
                   </Button>
@@ -408,16 +408,16 @@ export function ExamWizard({ examId }: { examId?: string }) {
               </div>
 
               {selectedArchived.length > 0 && (
-                <fieldset className="fieldset-reset">
-                  <legend className="muted">
+                <fieldset className="m-0 grid gap-2.5 border-0 p-0">
+                  <legend className="font-normal text-muted">
                     {selectedArchived.length === 1
                       ? '1 question in your pool can no longer be used'
                       : `${selectedArchived.length} questions in your pool can no longer be used`}
                   </legend>
-                  <ul className="pick-list">
+                  <ul className="m-0 grid max-h-[340px] list-none gap-0.5 overflow-y-auto rounded-md border border-[#dfe5f0] bg-white p-1.5 [&_li:hover]:bg-[#edf0f6] [&_li]:rounded [&_li]:px-[7px] [&_li]:py-[5px]">
                     {selectedArchived.map((question) => (
                       <li key={question.id}>
-                        <div className="checkbox-row">
+                        <div className="flex items-center gap-[9px] font-semibold [&_input]:h-[17px] [&_input]:w-[17px] [&_input]:accent-[#455B8A]">
                           <input
                             id={`wizard-archived-${question.id}`}
                             type="checkbox"
@@ -425,15 +425,15 @@ export function ExamWizard({ examId }: { examId?: string }) {
                             disabled
                             aria-disabled="true"
                           />
-                          <span className="pick-meta">{question.difficulty}</span>
-                          <span className="question-text">{question.text}</span>
+                          <span className="w-[62px] flex-none text-[0.8rem] font-bold capitalize text-primary">{question.difficulty}</span>
+                          <span className="max-w-[460px] [overflow-wrap:anywhere]">{question.text}</span>
                         </div>
-                        <p className="muted">
+                        <p className="font-normal text-muted">
                           This question was deleted (archived) and cannot be used in an exam.
                           Saving is blocked until it is removed. The server refuses it with
                           “Some pool questions were not found or are archived”.
                         </p>
-                        <div className="row-actions">
+                        <div className="flex flex-wrap items-center gap-2">
                           <Button type="button" variant="secondary" onClick={() => removeArchived(question.id)}>
                             Remove this question
                           </Button>
@@ -453,22 +453,22 @@ export function ExamWizard({ examId }: { examId?: string }) {
               ) : visibleBank.length === 0 ? (
                 <EmptyState>No questions at that difficulty. Choose a different filter.</EmptyState>
               ) : (
-                <fieldset className="fieldset-reset">
-                  <legend className="muted">
+                <fieldset className="m-0 grid gap-2.5 border-0 p-0">
+                  <legend className="font-normal text-muted">
                     {form.poolIds.length} of {bank.length} questions in the pool
                   </legend>
-                  <ul className="pick-list">
+                  <ul className="m-0 grid max-h-[340px] list-none gap-0.5 overflow-y-auto rounded-md border border-[#dfe5f0] bg-white p-1.5 [&_li:hover]:bg-[#edf0f6] [&_li]:rounded [&_li]:px-[7px] [&_li]:py-[5px]">
                     {visibleBank.map((question) => (
                       <li key={question.id}>
-                        <label className="checkbox-row" htmlFor={`wizard-pick-${question.id}`}>
+                        <label className="flex items-center gap-[9px] font-semibold [&_input]:h-[17px] [&_input]:w-[17px] [&_input]:accent-[#455B8A]" htmlFor={`wizard-pick-${question.id}`}>
                           <input
                             id={`wizard-pick-${question.id}`}
                             type="checkbox"
                             checked={selected.has(question.id)}
                             onChange={() => toggleQuestion(question.id)}
                           />
-                          <span className="pick-meta">{question.difficulty}</span>
-                          <span className="question-text">{question.text}</span>
+                          <span className="w-[62px] flex-none text-[0.8rem] font-bold capitalize text-primary">{question.difficulty}</span>
+                          <span className="max-w-[460px] [overflow-wrap:anywhere]">{question.text}</span>
                         </label>
                       </li>
                     ))}
@@ -479,11 +479,11 @@ export function ExamWizard({ examId }: { examId?: string }) {
           </Card>
 
           <Card>
-            <div className="step-head">
-              <h2><span className="step-number">3</span> Schedule and scoring</h2>
+            <div className="flex items-center gap-3 border-b border-[#dfe5f0] pb-3">
+              <h2><span className="grid h-[26px] w-[26px] flex-none place-items-center rounded-full bg-primary text-[0.82rem] text-white">3</span> Schedule and scoring</h2>
             </div>
-            <div className="form-stack">
-              <div className="mix-row">
+            <div className="mt-5 grid gap-[18px]">
+              <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(165px,1fr))]">
                 <Field label="Starts" htmlFor="wizard-start">
                   <Input
                     id="wizard-start"
@@ -503,7 +503,7 @@ export function ExamWizard({ examId }: { examId?: string }) {
                   />
                 </Field>
               </div>
-              <div className="mix-row">
+              <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(165px,1fr))]">
                 <Field label="Minutes a student has" htmlFor="wizard-duration">
                   <Input
                     id="wizard-duration"
@@ -529,7 +529,7 @@ export function ExamWizard({ examId }: { examId?: string }) {
                   />
                 </Field>
               </div>
-              <p className="muted">
+              <p className="font-normal text-muted">
                 A student's deadline is the earlier of their own start plus these minutes, and the end time
                 above, so a student who begins late does not gain extra time. This value is the whole score
                 of the exam: the grade stored with each question is not used for scoring. It is kept with{' '}
@@ -540,15 +540,15 @@ export function ExamWizard({ examId }: { examId?: string }) {
           </Card>
 
           <Card>
-            <div className="step-head">
-              <h2><span className="step-number">4</span> Who takes it</h2>
+            <div className="flex items-center gap-3 border-b border-[#dfe5f0] pb-3">
+              <h2><span className="grid h-[26px] w-[26px] flex-none place-items-center rounded-full bg-primary text-[0.82rem] text-white">4</span> Who takes it</h2>
             </div>
-            <div className="form-stack">
-              <fieldset className="fieldset-reset">
-                <legend className="muted">Target</legend>
+            <div className="mt-5 grid gap-[18px]">
+              <fieldset className="m-0 grid gap-2.5 border-0 p-0">
+                <legend className="font-normal text-muted">Target</legend>
                 {SCOPES.map((scope) => (
                   <label
-                    className={scope.available ? 'scope-row' : 'scope-row is-unavailable'}
+                    className={scope.available ? 'flex items-start gap-2.5 py-[7px] font-semibold [&_input]:mt-[3px] [&_input]:h-[17px] [&_input]:w-[17px] [&_input]:flex-none [&_input]:accent-[#455B8A]' : 'flex items-start gap-2.5 py-[7px] font-normal text-muted [&_input]:mt-[3px] [&_input]:h-[17px] [&_input]:w-[17px] [&_input]:flex-none [&_input]:accent-[#455B8A]'}
                     key={scope.value}
                     htmlFor={`wizard-scope-${scope.value}`}
                   >
@@ -563,7 +563,7 @@ export function ExamWizard({ examId }: { examId?: string }) {
                     />
                     <span>
                       {scope.label}
-                      <span className="muted"> — {scope.hint}</span>
+                      <span className="font-normal text-muted"> — {scope.hint}</span>
                     </span>
                   </label>
                 ))}
@@ -571,11 +571,11 @@ export function ExamWizard({ examId }: { examId?: string }) {
             </div>
           </Card>
 
-          <Card className="detail-card">
-            <div className="step-head">
-              <h2><span className="step-number">5</span> Review</h2>
+          <Card className="mt-2 border-t-4 border-t-accent">
+            <div className="flex items-center gap-3 border-b border-[#dfe5f0] pb-3">
+              <h2><span className="grid h-[26px] w-[26px] flex-none place-items-center rounded-full bg-primary text-[0.82rem] text-white">5</span> Review</h2>
             </div>
-            <dl className="review-list">
+            <dl className="m-0 grid gap-0 [overflow-wrap:anywhere] [&_dd]:m-0 [&_div]:grid [&_div]:gap-3.5 [&_div]:border-b [&_div]:border-[#dfe5f0] [&_div]:py-[9px] [&_div]:[grid-template-columns:190px_1fr] [&_dt]:font-semibold [&_dt]:text-muted max-md:[&_div]:grid-cols-1">
               <div><dt>Title</dt><dd>{form.title.trim() === '' ? '—' : form.title.trim()}</dd></div>
               <div><dt>Subject</dt><dd>{selectedSubject ? `${selectedSubject.code} — ${selectedSubject.name}` : '—'}</dd></div>
               <div>
@@ -593,7 +593,7 @@ export function ExamWizard({ examId }: { examId?: string }) {
               </div>
               <div><dt>Target</dt><dd>{SCOPES.find((scope) => scope.value === form.targetScope)?.label}</dd></div>
             </dl>
-            <p className="muted">
+            <p className="font-normal text-muted">
               {editing
                 ? editOutcomeExplainer(loadedStatus)
                 : 'Creating an exam sends it to an administrator for approval. It has no access code and students cannot start it until it is approved.'}
@@ -601,17 +601,17 @@ export function ExamWizard({ examId }: { examId?: string }) {
           </Card>
 
           {!valid && (
-            <ul className="requirement-list">
+            <ul className="m-0 grid gap-1 pl-5 font-normal text-muted">
               {problems.map((problem) => <li key={problem}>{problem}</li>)}
             </ul>
           )}
 
-          <div className="row-actions">
+          <div className="flex flex-wrap items-center gap-2">
             <Button type="submit" disabled={!valid || saving}>
               {saving ? 'Saving…' : editing ? 'Save changes' : 'Create exam'}
             </Button>
             <Button type="button" variant="secondary" onClick={() => navigate('/doctor/exams')}>Cancel</Button>
-            {saving && <span className="muted">Working — do not close this page.</span>}
+            {saving && <span className="font-normal text-muted">Working — do not close this page.</span>}
           </div>
         </>
       )}

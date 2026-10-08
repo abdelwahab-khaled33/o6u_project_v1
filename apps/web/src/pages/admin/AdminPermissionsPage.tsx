@@ -128,12 +128,12 @@ export function AdminPermissionsPage() {
     <>
       <Card>
         <h2>Permission defaults</h2>
-        <p className="page-intro">
+        <p className="font-normal text-muted">
           Each cell is the default for one role. Effective permission is a user override when one exists, otherwise this default. Ownership and scope are always enforced on top of these keys.
         </p>
         {error && <Alert>{error}</Alert>}
         {notice && <Alert variant="success">{notice}</Alert>}
-        <div className="form-stack">
+        <div className="mt-5 grid gap-[18px]">
           {loading ? (
             <div><Spinner label="Loading permission defaults" /> Loading defaults…</div>
           ) : !defaults ? (
@@ -154,7 +154,7 @@ export function AdminPermissionsPage() {
                       const applies = defaults.applicable[role]?.includes(key) ?? false;
                       const cellId = `${role}:${key}`;
                       return (
-                        <td key={role} className="matrix-cell">
+                        <td key={role} className="whitespace-nowrap [&_input]:h-[17px] [&_input]:w-[17px] [&_input]:accent-[#455B8A]">
                           <input
                             type="checkbox"
                             aria-label={`${key} default for ${role}`}
@@ -162,7 +162,7 @@ export function AdminPermissionsPage() {
                             disabled={!applies || busyKey === cellId}
                             onChange={(event) => { void setDefault(role, key, event.target.checked); }}
                           />
-                          {!applies && <span className="muted"> n/a</span>}
+                          {!applies && <span className="font-normal text-muted"> n/a</span>}
                         </td>
                       );
                     })}
@@ -174,12 +174,12 @@ export function AdminPermissionsPage() {
         </div>
       </Card>
 
-      <Card className="stacked-card">
+      <Card className="mt-5">
         <h2>User permission overrides</h2>
-        <p className="page-intro">
+        <p className="font-normal text-muted">
           Load a user by id to see the role default, their override and the effective value per key. Clearing an override sends no value and falls back to the role default.
         </p>
-        <form className="filter-bar" onSubmit={submitUserLookup}>
+        <form className="flex flex-wrap items-end gap-3 rounded-[14px] border border-[#dfe5f0] bg-white p-4 shadow-[0_4px_14px_rgb(36_52_80/7%)]" onSubmit={submitUserLookup}>
           <Field label="User id" htmlFor="permissions-user-id">
             <Input
               key={requestedUserId}
@@ -189,7 +189,7 @@ export function AdminPermissionsPage() {
               placeholder="User UUID"
             />
           </Field>
-          <div className="row-actions">
+          <div className="flex flex-wrap items-center gap-2">
             <Button type="submit" variant="secondary" disabled={userLoading}>Load overrides</Button>
             {userPermissions && (
               <Button
@@ -203,7 +203,7 @@ export function AdminPermissionsPage() {
           </div>
         </form>
 
-        <div className="form-stack">
+        <div className="mt-5 grid gap-[18px]">
           {userError && <Alert>{userError}</Alert>}
           {userLoading && <div><Spinner label="Loading user overrides" /> Loading overrides…</div>}
           {!userLoading && !userPermissions && <EmptyState>No user loaded.</EmptyState>}
@@ -226,9 +226,9 @@ export function AdminPermissionsPage() {
                       <td>{row.permission_key}</td>
                       <td>{yesNo(row.role_default)}</td>
                       <td>{yesNo(row.override)}</td>
-                      <td>{row.effective ? 'Yes' : 'No'}{!applies && <span className="muted"> n/a</span>}</td>
+                      <td>{row.effective ? 'Yes' : 'No'}{!applies && <span className="font-normal text-muted"> n/a</span>}</td>
                       <td>
-                        <div className="row-actions">
+                        <div className="flex flex-wrap items-center gap-2">
                           <Button
                             variant="secondary"
                             disabled={userBusyKey === row.permission_key}
@@ -259,7 +259,7 @@ export function AdminPermissionsPage() {
             </Table>
           )}
           {userPermissions && (
-            <p className="muted">
+            <p className="font-normal text-muted">
               Loaded {userPermissions.user.username} ({userPermissions.user.full_name}), role {userPermissions.user.role}.
             </p>
           )}

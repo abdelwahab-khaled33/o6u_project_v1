@@ -100,22 +100,22 @@ export function SubjectResultsPage({ detailsBase }: { detailsBase: string }) {
 
   return (
     <Card>
-      <div className="results-head">
+      <div className="flex flex-wrap items-start justify-between gap-x-5 gap-y-3">
         <div>
           <h2>{data ? `${data.subject.code} results` : 'Subject results'}</h2>
-          <p className="page-intro">
+          <p className="font-normal text-muted">
             Every ended exam and quiz in this subject, one column each. Grades are read from the column each
             cell belongs to, so a blank cell means that student has no graded attempt there.
           </p>
         </div>
         {data && data.columns.length > 0 && (
-          <div className="row-actions">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="secondary"
               disabled={exporting !== null}
               onClick={() => void exportScope('all')}
             >
-              <span aria-hidden="true" className="button-icon">
+              <span aria-hidden="true" className="mr-[7px] inline-flex align-[-2px]">
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                   <path
                     d="M8 1v9.2M4.8 7.4 8 10.6l3.2-3.2M2.5 12.5h11V15h-11z"
@@ -134,8 +134,8 @@ export function SubjectResultsPage({ detailsBase }: { detailsBase: string }) {
 
       {exportError && <Alert>{exportError}</Alert>}
 
-      <div className="form-stack">
-        <div className="results-toolbar">
+      <div className="mt-5 grid gap-[18px]">
+        <div className="flex flex-wrap items-end gap-3.5">
           <Field label="Subject" htmlFor="subject-results-subject">
             <Select
               id="subject-results-subject"
@@ -154,7 +154,7 @@ export function SubjectResultsPage({ detailsBase }: { detailsBase: string }) {
             </Select>
           </Field>
           <Field label="Search" htmlFor="subject-results-search">
-            <span className="search-wrap">
+            <span className="relative block [&_input]:w-full [&_input]:pr-[34px] [&_svg]:pointer-events-none [&_svg]:absolute [&_svg]:right-[11px] [&_svg]:top-1/2 [&_svg]:-translate-y-1/2 [&_svg]:text-muted">
               <Input
                 id="subject-results-search"
                 value={query}
@@ -194,9 +194,9 @@ export function SubjectResultsPage({ detailsBase }: { detailsBase: string }) {
                 visibleSections.map((section) => (
                   <section key={section.section.id} aria-label={section.section.name}>
                     <h3>
-                      {section.section.name} <span className="muted">· {section.ta.full_name}</span>
+                      {section.section.name} <span className="font-normal text-muted">· {section.ta.full_name}</span>
                     </h3>
-                    <div className="matrix-scroll">
+                    <div className="grid gap-0 [&_th]:min-w-[190px] [&_th]:align-top [&_th:first-child]:min-w-[52px] [&_th:nth-child(2)]:min-w-[210px]">
                       <Table>
                         <thead>
                           <tr>
@@ -204,12 +204,12 @@ export function SubjectResultsPage({ detailsBase }: { detailsBase: string }) {
                             <th>Student</th>
                             {data.columns.map((column) => (
                               <th key={column.id}>
-                                <div className="column-title">{column.title}</div>
-                                <div className="muted">
+                                <div className="font-bold">{column.title}</div>
+                                <div className="font-normal text-muted">
                                   {columnTypeLabel(column.type)} · {formatGradeCell(column.max_grade)} max ·{' '}
                                   {column.owner.full_name}
                                 </div>
-                                <div className="row-actions">
+                                <div className="flex flex-wrap items-center gap-2">
                                   <Link to={`${detailsBase}/${column.id}`}>Open results</Link>
                                   <Button
                                     variant="text"
@@ -229,11 +229,11 @@ export function SubjectResultsPage({ detailsBase }: { detailsBase: string }) {
                             <tr key={student.student_id}>
                               <td>{index + 1}</td>
                               <td>
-                                <div className="question-text">{student.student_name}</div>
-                                <span className="muted">{student.student_code ?? '—'}</span>
+                                <div className="max-w-[460px] [overflow-wrap:anywhere]">{student.student_name}</div>
+                                <span className="font-normal text-muted">{student.student_code ?? '—'}</span>
                               </td>
                               {data.columns.map((column) => (
-                                <td key={column.id} className="grade-cell">
+                                <td key={column.id} className="font-bold tabular-nums">
                                   {formatGradeCell(student.grades[column.id] ?? null)}
                                 </td>
                               ))}
@@ -245,7 +245,7 @@ export function SubjectResultsPage({ detailsBase }: { detailsBase: string }) {
                   </section>
                 ))
               )}
-              <p className="muted">
+              <p className="font-normal text-muted">
                 Grades come back as numbers and are shown as they are. A blank cell means no graded attempt
                 for that student in that column.
               </p>

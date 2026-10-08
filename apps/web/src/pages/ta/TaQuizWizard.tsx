@@ -94,20 +94,20 @@ function Coverage({ tier, required, selected, available }: {
 }) {
   const enough = required === 0 || selected >= required;
   return (
-    <div className="coverage" key={tier}>
-      <div className="coverage-head">
-        <span className="coverage-tier">{tier}</span>
-        <span className={enough ? 'coverage-count' : 'coverage-count is-short'}>
+    <div className="grid gap-[5px] rounded-md border border-[#dfe5f0] bg-[#edf0f6] px-3 py-2.5" key={tier}>
+      <div className="flex items-baseline justify-between gap-2.5">
+        <span className="font-semibold capitalize text-primary-dark">{tier}</span>
+        <span className={enough ? 'text-[0.85rem] font-bold text-[#147a47]' : 'text-[0.85rem] font-bold text-[#b42318]'}>
           {selected} selected of {required} required
         </span>
       </div>
-      <div className="coverage-bar" aria-hidden="true">
+      <div className="h-1.5 overflow-hidden rounded bg-[#e3e8f2]" aria-hidden="true">
         <div
-          className={enough ? 'coverage-fill' : 'coverage-fill is-short'}
+          className={enough ? 'h-full bg-[#147a47]' : 'h-full bg-[#b42318]'}
           style={{ width: `${required === 0 ? 100 : Math.min(100, (selected / required) * 100)}%` }}
         />
       </div>
-      <span className="muted">{available} in this bank at this difficulty</span>
+      <span className="font-normal text-muted">{available} in this bank at this difficulty</span>
     </div>
   );
 }
@@ -346,7 +346,7 @@ export function TaQuizWizard({ quizId }: { quizId?: string }) {
   }
 
   return (
-    <form className="form-stack" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
+    <form className="mt-5 grid gap-[18px]" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
       {error && <Alert>{error}</Alert>}
 
       {subjects.length === 0 ? (
@@ -360,10 +360,10 @@ export function TaQuizWizard({ quizId }: { quizId?: string }) {
       ) : (
         <>
           <Card>
-            <div className="step-head">
-              <h2><span className="step-number">1</span> Subject, title and source</h2>
+            <div className="flex items-center gap-3 border-b border-[#dfe5f0] pb-3">
+              <h2><span className="grid h-[26px] w-[26px] flex-none place-items-center rounded-full bg-primary text-[0.82rem] text-white">1</span> Subject, title and source</h2>
             </div>
-            <div className="form-stack">
+            <div className="mt-5 grid gap-[18px]">
               <Field label="Subject" htmlFor="ta-wizard-subject">
                 <Select
                   id="ta-wizard-subject"
@@ -384,7 +384,7 @@ export function TaQuizWizard({ quizId }: { quizId?: string }) {
                 </Select>
               </Field>
               {editing && (
-                <p className="muted">
+                <p className="font-normal text-muted">
                   The subject is fixed: a quiz cannot move between subjects, because its questions, its targets and
                   its generated attempts all belong to the subject it was created in.
                 </p>
@@ -399,13 +399,13 @@ export function TaQuizWizard({ quizId }: { quizId?: string }) {
                   required
                 />
               </Field>
-              <span className="muted">Between 2 and {TITLE_MAX} characters. Students see this title.</span>
+              <span className="font-normal text-muted">Between 2 and {TITLE_MAX} characters. Students see this title.</span>
 
-              <fieldset className="fieldset-reset">
-                <legend className="muted">Where the questions come from</legend>
+              <fieldset className="m-0 grid gap-2.5 border-0 p-0">
+                <legend className="font-normal text-muted">Where the questions come from</legend>
                 {QUIZ_SOURCES.map((source) => (
                   <label
-                    className="scope-row"
+                    className="flex items-start gap-2.5 py-[7px] font-semibold [&_input]:mt-[3px] [&_input]:h-[17px] [&_input]:w-[17px] [&_input]:flex-none [&_input]:accent-[#455B8A]"
                     key={source.value}
                     htmlFor={`ta-wizard-source-${source.value}`}
                   >
@@ -419,12 +419,12 @@ export function TaQuizWizard({ quizId }: { quizId?: string }) {
                     />
                     <span>
                       {source.label}
-                      <span className="muted"> — {source.hint}</span>
+                      <span className="font-normal text-muted"> — {source.hint}</span>
                     </span>
                   </label>
                 ))}
                 {form.quizSource === 'own_questions' && (
-                  <p className="muted">
+                  <p className="font-normal text-muted">
                     Only your own questions can be chosen, and the ones a colleague wrote are listed greyed out below.
                     The server enforces exactly this, so an unselectable question is a statement about authorship, not
                     a guess made in the browser.
@@ -435,19 +435,19 @@ export function TaQuizWizard({ quizId }: { quizId?: string }) {
           </Card>
 
           <Card>
-            <div className="step-head">
-              <h2><span className="step-number">2</span> Question pool and difficulty mix</h2>
+            <div className="flex items-center gap-3 border-b border-[#dfe5f0] pb-3">
+              <h2><span className="grid h-[26px] w-[26px] flex-none place-items-center rounded-full bg-primary text-[0.82rem] text-white">2</span> Question pool and difficulty mix</h2>
             </div>
-            <p className="page-intro">
+            <p className="font-normal text-muted">
               The pool is the set of questions the quiz draws from. Each student is then given their own sample
               matching the mix you set here, with the questions and their options in a different order for every
               student.
             </p>
 
-            <div className="form-stack">
-              <fieldset className="fieldset-reset">
-                <legend className="muted">How many questions of each difficulty should each student answer?</legend>
-                <div className="mix-row">
+            <div className="mt-5 grid gap-[18px]">
+              <fieldset className="m-0 grid gap-2.5 border-0 p-0">
+                <legend className="font-normal text-muted">How many questions of each difficulty should each student answer?</legend>
+                <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(165px,1fr))]">
                   {DIFFICULTIES.map((tier) => (
                     <Field key={tier} label={tier} htmlFor={`ta-wizard-mix-${tier}`}>
                       <Input
@@ -462,7 +462,7 @@ export function TaQuizWizard({ quizId }: { quizId?: string }) {
                     </Field>
                   ))}
                 </div>
-                <div className="coverage-row">
+                <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(210px,1fr))]">
                   {DIFFICULTIES.map((tier) => (
                     <Coverage
                       key={tier}
@@ -474,14 +474,14 @@ export function TaQuizWizard({ quizId }: { quizId?: string }) {
                   ))}
                 </div>
                 {selectedArchived.length > 0 && (
-                  <p className="muted">
+                  <p className="font-normal text-muted">
                     {archivedPoolProblem(selectedArchived.length)} The counts above count only
                     questions that can still be used.
                   </p>
                 )}
               </fieldset>
 
-              <div className="filter-bar">
+              <div className="flex flex-wrap items-end gap-3 rounded-[14px] border border-[#dfe5f0] bg-white p-4 shadow-[0_4px_14px_rgb(36_52_80/7%)]">
                 <Field label="Show" htmlFor="ta-wizard-bank-difficulty">
                   <Select
                     id="ta-wizard-bank-difficulty"
@@ -492,7 +492,7 @@ export function TaQuizWizard({ quizId }: { quizId?: string }) {
                     {DIFFICULTIES.map((tier) => <option key={tier} value={tier}>{tier}</option>)}
                   </Select>
                 </Field>
-                <div className="row-actions">
+                <div className="flex flex-wrap items-center gap-2">
                   <Button type="button" variant="secondary" onClick={selectVisible} disabled={visibleBank.length === 0}>
                     Select all shown
                   </Button>
@@ -503,16 +503,16 @@ export function TaQuizWizard({ quizId }: { quizId?: string }) {
               </div>
 
               {selectedArchived.length > 0 && (
-                <fieldset className="fieldset-reset">
-                  <legend className="muted">
+                <fieldset className="m-0 grid gap-2.5 border-0 p-0">
+                  <legend className="font-normal text-muted">
                     {selectedArchived.length === 1
                       ? '1 question in your pool can no longer be used'
                       : `${selectedArchived.length} questions in your pool can no longer be used`}
                   </legend>
-                  <ul className="pick-list">
+                  <ul className="m-0 grid max-h-[340px] list-none gap-0.5 overflow-y-auto rounded-md border border-[#dfe5f0] bg-white p-1.5 [&_li:hover]:bg-[#edf0f6] [&_li]:rounded [&_li]:px-[7px] [&_li]:py-[5px]">
                     {selectedArchived.map((question) => (
                       <li key={question.id}>
-                        <div className="checkbox-row">
+                        <div className="flex items-center gap-[9px] font-semibold [&_input]:h-[17px] [&_input]:w-[17px] [&_input]:accent-[#455B8A]">
                           <input
                             id={`ta-wizard-archived-${question.id}`}
                             type="checkbox"
@@ -520,15 +520,15 @@ export function TaQuizWizard({ quizId }: { quizId?: string }) {
                             disabled
                             aria-disabled="true"
                           />
-                          <span className="pick-meta">{question.difficulty}</span>
-                          <span className="question-text">{question.text}</span>
+                          <span className="w-[62px] flex-none text-[0.8rem] font-bold capitalize text-primary">{question.difficulty}</span>
+                          <span className="max-w-[460px] [overflow-wrap:anywhere]">{question.text}</span>
                         </div>
-                        <p className="muted">
+                        <p className="font-normal text-muted">
                           This question was deleted (archived) and cannot be used in a quiz.
                           Saving is blocked until it is removed. The server refuses it with
                           “Some pool questions were not found or are archived”.
                         </p>
-                        <div className="row-actions">
+                        <div className="flex flex-wrap items-center gap-2">
                           <Button type="button" variant="secondary" onClick={() => removeArchived(question.id)}>
                             Remove this question
                           </Button>
@@ -554,22 +554,22 @@ export function TaQuizWizard({ quizId }: { quizId?: string }) {
               ) : visibleBank.length === 0 ? (
                 <EmptyState>No questions at that difficulty. Choose a different filter.</EmptyState>
               ) : (
-                <fieldset className="fieldset-reset">
-                  <legend className="muted">
+                <fieldset className="m-0 grid gap-2.5 border-0 p-0">
+                  <legend className="font-normal text-muted">
                     {form.poolIds.length} of {pickable.length} questions in the pool
                   </legend>
-                  <ul className="pick-list">
+                  <ul className="m-0 grid max-h-[340px] list-none gap-0.5 overflow-y-auto rounded-md border border-[#dfe5f0] bg-white p-1.5 [&_li:hover]:bg-[#edf0f6] [&_li]:rounded [&_li]:px-[7px] [&_li]:py-[5px]">
                     {visibleBank.map((question) => (
                       <li key={question.id}>
-                        <label className="checkbox-row" htmlFor={`ta-wizard-pick-${question.id}`}>
+                        <label className="flex items-center gap-[9px] font-semibold [&_input]:h-[17px] [&_input]:w-[17px] [&_input]:accent-[#455B8A]" htmlFor={`ta-wizard-pick-${question.id}`}>
                           <input
                             id={`ta-wizard-pick-${question.id}`}
                             type="checkbox"
                             checked={selected.has(question.id)}
                             onChange={() => toggleQuestion(question.id)}
                           />
-                          <span className="pick-meta">{question.difficulty}</span>
-                          <span className="question-text">{question.text}</span>
+                          <span className="w-[62px] flex-none text-[0.8rem] font-bold capitalize text-primary">{question.difficulty}</span>
+                          <span className="max-w-[460px] [overflow-wrap:anywhere]">{question.text}</span>
                         </label>
                       </li>
                     ))}
@@ -578,7 +578,7 @@ export function TaQuizWizard({ quizId }: { quizId?: string }) {
               )}
 
               {form.quizSource === 'own_questions' && bank.length > pickable.length && (
-                <p className="muted">
+                <p className="font-normal text-muted">
                   {plural(bank.length - pickable.length, 'questions')} in this bank{' '}
                   {bank.length - pickable.length === 1 ? 'was' : 'were'} written by a colleague and cannot be used
                   while the source is set to your own questions.
@@ -588,11 +588,11 @@ export function TaQuizWizard({ quizId }: { quizId?: string }) {
           </Card>
 
           <Card>
-            <div className="step-head">
-              <h2><span className="step-number">3</span> Schedule and scoring</h2>
+            <div className="flex items-center gap-3 border-b border-[#dfe5f0] pb-3">
+              <h2><span className="grid h-[26px] w-[26px] flex-none place-items-center rounded-full bg-primary text-[0.82rem] text-white">3</span> Schedule and scoring</h2>
             </div>
-            <div className="form-stack">
-              <div className="mix-row">
+            <div className="mt-5 grid gap-[18px]">
+              <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(165px,1fr))]">
                 <Field label="Starts" htmlFor="ta-wizard-start">
                   <Input
                     id="ta-wizard-start"
@@ -612,7 +612,7 @@ export function TaQuizWizard({ quizId }: { quizId?: string }) {
                   />
                 </Field>
               </div>
-              <div className="mix-row">
+              <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(165px,1fr))]">
                 <Field label="Minutes a student has" htmlFor="ta-wizard-duration">
                   <Input
                     id="ta-wizard-duration"
@@ -638,7 +638,7 @@ export function TaQuizWizard({ quizId }: { quizId?: string }) {
                   />
                 </Field>
               </div>
-              <p className="muted">
+              <p className="font-normal text-muted">
                 A student's deadline is the earlier of their own start plus these minutes, and the end time above, so
                 a student who begins late does not gain extra time. This value is the whole score of the quiz: the
                 grade stored with each question is not used for scoring. It is kept with {POINTS_DECIMALS} decimal
@@ -649,14 +649,14 @@ export function TaQuizWizard({ quizId }: { quizId?: string }) {
           </Card>
 
           <Card>
-            <div className="step-head">
-              <h2><span className="step-number">4</span> Who takes it</h2>
+            <div className="flex items-center gap-3 border-b border-[#dfe5f0] pb-3">
+              <h2><span className="grid h-[26px] w-[26px] flex-none place-items-center rounded-full bg-primary text-[0.82rem] text-white">4</span> Who takes it</h2>
             </div>
-            <div className="form-stack">
-              <fieldset className="fieldset-reset">
-                <legend className="muted">Target</legend>
+            <div className="mt-5 grid gap-[18px]">
+              <fieldset className="m-0 grid gap-2.5 border-0 p-0">
+                <legend className="font-normal text-muted">Target</legend>
                 {targetScopeOptions().map((scope) => (
-                  <label className="scope-row" key={scope.value} htmlFor={`ta-wizard-scope-${scope.value}`}>
+                  <label className="flex items-start gap-2.5 py-[7px] font-semibold [&_input]:mt-[3px] [&_input]:h-[17px] [&_input]:w-[17px] [&_input]:flex-none [&_input]:accent-[#455B8A]" key={scope.value} htmlFor={`ta-wizard-scope-${scope.value}`}>
                     <input
                       id={`ta-wizard-scope-${scope.value}`}
                       type="radio"
@@ -672,7 +672,7 @@ export function TaQuizWizard({ quizId }: { quizId?: string }) {
                   </label>
                 ))}
               </fieldset>
-              <p className="muted">
+              <p className="font-normal text-muted">
                 A quiz cannot target a whole subject. Attempts are generated for your own sections, or for the
                 students you pick, and the sections and students below come from your own enrolment in this subject.
               </p>
@@ -686,19 +686,19 @@ export function TaQuizWizard({ quizId }: { quizId?: string }) {
                   {`You teach no section in ${selectedSubject.code}, so there is nobody to target. An administrator assigns TAs to sections.`}
                 </EmptyState>
               ) : (
-                <fieldset className="fieldset-reset">
-                  <legend className="muted">Your sections in {selectedSubject.code}</legend>
-                  <ul className="pick-list">
+                <fieldset className="m-0 grid gap-2.5 border-0 p-0">
+                  <legend className="font-normal text-muted">Your sections in {selectedSubject.code}</legend>
+                  <ul className="m-0 grid max-h-[340px] list-none gap-0.5 overflow-y-auto rounded-md border border-[#dfe5f0] bg-white p-1.5 [&_li:hover]:bg-[#edf0f6] [&_li]:rounded [&_li]:px-[7px] [&_li]:py-[5px]">
                     {sections.map((section) => (
                       <li key={section.id}>
-                        <label className="checkbox-row" htmlFor={`ta-wizard-section-${section.id}`}>
+                        <label className="flex items-center gap-[9px] font-semibold [&_input]:h-[17px] [&_input]:w-[17px] [&_input]:accent-[#455B8A]" htmlFor={`ta-wizard-section-${section.id}`}>
                           <input
                             id={`ta-wizard-section-${section.id}`}
                             type="checkbox"
                             checked={form.targetSectionIds.includes(section.id)}
                             onChange={() => toggleSection(section.id)}
                           />
-                          <span className="question-text">{section.name}</span>
+                          <span className="max-w-[460px] [overflow-wrap:anywhere]">{section.name}</span>
                         </label>
                       </li>
                     ))}
@@ -707,8 +707,8 @@ export function TaQuizWizard({ quizId }: { quizId?: string }) {
               )}
 
               {form.targetScope === 'student_list' && sections.length > 0 && (
-                <fieldset className="fieldset-reset">
-                  <legend className="muted">
+                <fieldset className="m-0 grid gap-2.5 border-0 p-0">
+                  <legend className="font-normal text-muted">
                     {form.targetSectionIds.length === 0
                       ? 'Pick your sections above, or choose from every student you teach in this subject'
                       : 'Students in the sections you picked'}
@@ -719,17 +719,17 @@ export function TaQuizWizard({ quizId }: { quizId?: string }) {
                       students in it.
                     </EmptyState>
                   ) : (
-                    <ul className="pick-list">
+                    <ul className="m-0 grid max-h-[340px] list-none gap-0.5 overflow-y-auto rounded-md border border-[#dfe5f0] bg-white p-1.5 [&_li:hover]:bg-[#edf0f6] [&_li]:rounded [&_li]:px-[7px] [&_li]:py-[5px]">
                       {eligibleStudents.map((student) => (
                         <li key={student.id}>
-                          <label className="checkbox-row" htmlFor={`ta-wizard-student-${student.id}`}>
+                          <label className="flex items-center gap-[9px] font-semibold [&_input]:h-[17px] [&_input]:w-[17px] [&_input]:accent-[#455B8A]" htmlFor={`ta-wizard-student-${student.id}`}>
                             <input
                               id={`ta-wizard-student-${student.id}`}
                               type="checkbox"
                               checked={form.targetStudentIds.includes(student.id)}
                               onChange={() => toggleStudent(student.id)}
                             />
-                            <span className="question-text">
+                            <span className="max-w-[460px] [overflow-wrap:anywhere]">
                               {student.full_name} — {student.student_code ?? 'no code'} · {student.section_name}
                             </span>
                           </label>
@@ -742,11 +742,11 @@ export function TaQuizWizard({ quizId }: { quizId?: string }) {
             </div>
           </Card>
 
-          <Card className="detail-card">
-            <div className="step-head">
-              <h2><span className="step-number">5</span> Review</h2>
+          <Card className="mt-2 border-t-4 border-t-accent">
+            <div className="flex items-center gap-3 border-b border-[#dfe5f0] pb-3">
+              <h2><span className="grid h-[26px] w-[26px] flex-none place-items-center rounded-full bg-primary text-[0.82rem] text-white">5</span> Review</h2>
             </div>
-            <dl className="review-list">
+            <dl className="m-0 grid gap-0 [overflow-wrap:anywhere] [&_dd]:m-0 [&_div]:grid [&_div]:gap-3.5 [&_div]:border-b [&_div]:border-[#dfe5f0] [&_div]:py-[9px] [&_div]:[grid-template-columns:190px_1fr] [&_dt]:font-semibold [&_dt]:text-muted max-md:[&_div]:grid-cols-1">
               <div><dt>Title</dt><dd>{form.title.trim() === '' ? '—' : form.title.trim()}</dd></div>
               <div><dt>Subject</dt><dd>{selectedSubject ? `${selectedSubject.code} — ${selectedSubject.name}` : '—'}</dd></div>
               <div>
@@ -779,7 +779,7 @@ export function TaQuizWizard({ quizId }: { quizId?: string }) {
                 </dd>
               </div>
             </dl>
-            <p className="muted">
+            <p className="font-normal text-muted">
               {editing
                 ? 'Saving keeps the quiz live, leaves its access code alone, and clears the attempts already generated for it so every target is re-sampled from the pool you just saved.'
                 : 'A quiz needs no administrator: it is live the moment it is created, and students reach it with the access code you can read on the quizzes page.'}
@@ -787,17 +787,17 @@ export function TaQuizWizard({ quizId }: { quizId?: string }) {
           </Card>
 
           {!valid && (
-            <ul className="requirement-list">
+            <ul className="m-0 grid gap-1 pl-5 font-normal text-muted">
               {problems.map((problem) => <li key={problem}>{problem}</li>)}
             </ul>
           )}
 
-          <div className="row-actions">
+          <div className="flex flex-wrap items-center gap-2">
             <Button type="submit" disabled={!valid || saving}>
               {saving ? 'Saving…' : editing ? 'Save changes' : 'Create quiz'}
             </Button>
             <Button type="button" variant="secondary" onClick={() => navigate('/ta/quizzes')}>Cancel</Button>
-            {saving && <span className="muted">Working — do not close this page.</span>}
+            {saving && <span className="font-normal text-muted">Working — do not close this page.</span>}
           </div>
         </>
       )}

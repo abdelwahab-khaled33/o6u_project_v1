@@ -4,6 +4,7 @@ import { Alert } from '../../components/ui/Alert';
 import { Button } from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Spinner';
 import { api } from '../../lib/api';
+import { STATUS_PILL } from '../../lib/statusTone';
 import { messageFrom } from '../admin/adminShared';
 import {
   answerChoices,
@@ -238,24 +239,24 @@ export function StudentExamRunner({ exam, attempt, questions: initialQuestions, 
 
   return (
     <div
-      className="runner exam-surface"
+      className="grid select-none gap-[22px]"
       onCopy={(event) => event.preventDefault()}
       onCut={(event) => event.preventDefault()}
       onPaste={(event) => event.preventDefault()}
       onContextMenu={(event) => event.preventDefault()}
     >
-      <div className="runner-bar">
-        <div className="runner-title">
+      <div className="sticky top-3 z-20 grid items-center gap-x-[22px] gap-y-2 rounded-xl border border-[#dfe5f0] border-t-4 border-t-accent bg-white p-4 shadow-[0_12px_32px_rgb(36_52_80/10%)] [grid-template-columns:minmax(0,1fr)_auto] max-md:grid-cols-1">
+        <div className="grid min-w-0 gap-[3px] text-[1.05rem] font-bold">
           <strong>{exam.title}</strong>
-          <span className="muted">
+          <span className="font-normal text-muted">
             {exam.subject.code} — {exam.subject.name}
           </span>
         </div>
 
-        <div className="clock">
-          <span className="tally-label">Time left</span>
+        <div className="grid min-w-[150px] gap-0.5 text-right max-md:text-left">
+          <span className="text-[0.8rem] font-bold uppercase tracking-[0.05em] text-muted">Time left</span>
           <span
-            className={`clock-value${shortClock ? ' is-short' : ''}${expired ? ' is-up' : ''}`}
+            className={`font-extrabold tabular-nums leading-none tracking-wide text-primary-dark${shortClock ? ' text-accent' : ''}${expired ? ' text-[#b42318]' : ''}`}
             role="timer"
             aria-live="off"
             aria-label={`${formatCountdown(remaining)} remaining`}
@@ -264,24 +265,24 @@ export function StudentExamRunner({ exam, attempt, questions: initialQuestions, 
           </span>
         </div>
 
-        <div className="runner-tallies">
-          <div className="tally">
-            <span className="tally-label">Answered</span>
-            <span className="tally-value">
+        <div className="flex flex-wrap gap-x-[26px] gap-y-2 [grid-column:1/-1]">
+          <div className="flex items-baseline gap-2">
+            <span className="text-[0.8rem] font-bold uppercase tracking-[0.05em] text-muted">Answered</span>
+            <span className="font-extrabold tabular-nums">
               {progress.answered} of {progress.total}
             </span>
           </div>
-          <div className="tally">
-            <span className="tally-label">To do</span>
-            <span className={`tally-value${progress.unanswered > 0 ? ' is-short' : ''}`}>{progress.unanswered}</span>
+          <div className="flex items-baseline gap-2">
+            <span className="text-[0.8rem] font-bold uppercase tracking-[0.05em] text-muted">To do</span>
+            <span className={`font-extrabold tabular-nums${progress.unanswered > 0 ? ' text-[#b42318]' : ''}`}>{progress.unanswered}</span>
           </div>
-          <div className="tally">
-            <span className="tally-label">Flagged</span>
-            <span className="tally-value">{progress.flagged}</span>
+          <div className="flex items-baseline gap-2">
+            <span className="text-[0.8rem] font-bold uppercase tracking-[0.05em] text-muted">Flagged</span>
+            <span className="font-extrabold tabular-nums">{progress.flagged}</span>
           </div>
         </div>
 
-        <div className="row-actions runner-actions">
+        <div className="flex flex-wrap items-center justify-end gap-2 [grid-column:1/-1]">
           {pendingSave && <Spinner label="Saving answers" />}
           <Button variant="secondary" onClick={() => { void enterFullscreen(); }} disabled={fullscreen}>
             {fullscreen ? 'Fullscreen on' : 'Go fullscreen'}
@@ -299,7 +300,7 @@ export function StudentExamRunner({ exam, attempt, questions: initialQuestions, 
       </div>
 
       {(unanswered || submitError || sessionNotice) && (
-        <div className="form-stack" style={{ marginTop: 0 }}>
+        <div className="mt-5 grid gap-[18px]" style={{ marginTop: 0 }}>
           {unanswered && <Alert>{unanswered.message}</Alert>}
           {submitError && <Alert>{submitError}</Alert>}
           {sessionNotice && <Alert variant="info">{sessionNotice}</Alert>}
@@ -315,11 +316,11 @@ export function StudentExamRunner({ exam, attempt, questions: initialQuestions, 
               ? `. ${progress.unanswered} ${progress.unanswered === 1 ? 'question is' : 'questions are'} still blank, so the server will refuse the submission until you answer ${progress.unanswered === 1 ? 'it' : 'them'}.`
               : '. Every question is answered.'}
           </p>
-          <p className="muted">
+          <p className="font-normal text-muted">
             Submitting closes the attempt for good. You will not see your answers or your grade on this
             platform again.
           </p>
-          <div className="row-actions">
+          <div className="flex flex-wrap items-center gap-2">
             <Button disabled={submitting} onClick={() => { void submitAttempt('manual'); }}>
               {submitting ? 'Submitting…' : 'Submit exam'}
             </Button>
@@ -330,9 +331,9 @@ export function StudentExamRunner({ exam, attempt, questions: initialQuestions, 
         </Cardish>
       )}
 
-      <nav className="runner-overview" aria-label="Question overview">
+      <nav className="grid gap-3 rounded-xl border border-[#dfe5f0] bg-white px-5 py-[18px]" aria-label="Question overview">
         <h3>Questions</h3>
-        <div className="overview">
+        <div className="grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(44px,1fr))]">
           {questions.map((question, index) => {
             const answered = question.selected_answer != null && question.selected_answer !== '';
             const label = `Question ${index + 1}, ${answered ? 'answered' : 'not answered'}${question.is_flagged ? ', flagged' : ''}`;
@@ -340,7 +341,7 @@ export function StudentExamRunner({ exam, attempt, questions: initialQuestions, 
               <button
                 key={question.id}
                 type="button"
-                className={`overview-cell${answered ? ' is-answered' : ''}${question.is_flagged ? ' is-flagged' : ''}${focusedId === question.id ? ' is-current' : ''}`}
+                className={`relative min-h-[44px] rounded-[7px] border font-bold tabular-nums${answered ? ' border-[#b4c7ef] bg-[#eef4ff] text-primary-dark' : ' border-[#dfe5f0] bg-white'}${question.is_flagged ? " after:absolute after:bottom-[5px] after:left-1/2 after:h-1.5 after:w-1.5 after:-translate-x-1/2 after:rounded-full after:bg-accent after:content-['']" : ''}${focusedId === question.id ? ' outline outline-[3px] outline-[rgb(242_132_47/45%)] outline-offset-2' : ''}`}
                 aria-label={label}
                 title={label}
                 onClick={() => {
@@ -353,12 +354,12 @@ export function StudentExamRunner({ exam, attempt, questions: initialQuestions, 
             );
           })}
         </div>
-        <p className="muted overview-legend">
+        <p className="text-[0.84rem] font-normal text-muted">
           A filled cell is answered, a dot marks a flagged question, and a blank cell still needs an answer.
         </p>
       </nav>
 
-      <ol className="question-stack">
+      <ol className="m-0 grid list-none gap-[22px] p-0">
         {questions.map((question, index) => {
           const choices = answerChoices(question);
           const save = saves[question.id] ?? null;
@@ -370,19 +371,19 @@ export function StudentExamRunner({ exam, attempt, questions: initialQuestions, 
                   if (node) questionRefs.current.set(question.id, node);
                   else questionRefs.current.delete(question.id);
                 }}
-                className={`question-card${question.is_flagged ? ' is-flagged' : ''}${question.selected_answer == null ? ' is-unanswered' : ''}`}
+                className={`grid gap-3.5 rounded-xl border bg-white p-6 shadow-[0_4px_12px_rgb(36_52_80/5%)]${question.is_flagged ? ' border-[#f2c79a]' : ' border-[#dfe5f0]'}${question.selected_answer == null ? ' border-l-4 border-l-accent' : ''}`}
               >
-                <div className="question-head">
-                  <span className="question-index">Question {index + 1}</span>
-                  <span className="status">{question.difficulty}</span>
-                  {saveError && <span className="muted">{saveError}</span>}
-                  <span className="question-save">
+                <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2.5">
+                  <span className="font-extrabold text-primary-dark">Question {index + 1}</span>
+                  <span className={`${STATUS_PILL} border-[#dfe5f0] bg-[#edf0f6] text-muted`}>{question.difficulty}</span>
+                  {saveError && <span className="font-normal text-muted">{saveError}</span>}
+                  <span className="ml-auto text-[0.82rem] font-semibold text-muted">
                     {save?.phase === 'saving' && 'Saving…'}
                     {save?.phase === 'saved' && 'Saved'}
                   </span>
                   <Button
                     variant="text"
-                    className="question-flag"
+                    className="ml-1"
                     onClick={() => { void toggleFlag(question); }}
                     aria-pressed={question.is_flagged}
                   >
@@ -390,14 +391,14 @@ export function StudentExamRunner({ exam, attempt, questions: initialQuestions, 
                   </Button>
                 </div>
 
-                <fieldset className="fieldset-reset">
-                  <legend className="question-body">{question.text}</legend>
-                  {question.image_url && <img className="question-image" src={question.image_url} alt="" />}
-                  <div className="choice-list">
+                <fieldset className="m-0 grid gap-2.5 border-0 p-0">
+                  <legend className="font-semibold">{question.text}</legend>
+                  {question.image_url && <img className="max-h-[260px] w-full max-w-full rounded-md border border-[#dfe5f0]" src={question.image_url} alt="" />}
+                  <div className="grid gap-[9px]">
                     {choices.map((choice) => (
                       <label
                         key={choice.value}
-                        className={`choice${question.selected_answer === choice.value ? ' is-selected' : ''}`}
+                        className={`flex cursor-pointer items-center gap-3 rounded-[7px] border bg-white px-3.5 py-[11px] font-normal hover:border-primary [&_input]:h-[17px] [&_input]:w-[17px] [&_input]:flex-none [&_input]:accent-[#455B8A]${question.selected_answer === choice.value ? ' border-primary bg-[#eef4ff]' : ' border-[#dfe5f0]'}`}
                       >
                         <input
                           type="radio"
@@ -418,14 +419,14 @@ export function StudentExamRunner({ exam, attempt, questions: initialQuestions, 
         })}
       </ol>
 
-      <div className="runner-submit">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-0.5 py-1">
         {progress.unanswered > 0 ? (
-          <p className="muted">
+          <p className="font-normal text-muted">
             {progress.unanswered} {progress.unanswered === 1 ? 'question is' : 'questions are'} still blank.
             The server will not accept a submission until every question has an answer.
           </p>
         ) : (
-          <p className="muted">Every question has an answer. You can submit whenever you are ready.</p>
+          <p className="font-normal text-muted">Every question has an answer. You can submit whenever you are ready.</p>
         )}
         <Button
           disabled={submitting || expired}
@@ -442,5 +443,5 @@ export function StudentExamRunner({ exam, attempt, questions: initialQuestions, 
 }
 
 function Cardish({ children }: { children: ReactNode }) {
-  return <section className="runner-confirm">{children}</section>;
+  return <section className="grid gap-3 rounded-xl border border-[#f2c79a] bg-[#fff8f0] px-5 py-[18px]">{children}</section>;
 }

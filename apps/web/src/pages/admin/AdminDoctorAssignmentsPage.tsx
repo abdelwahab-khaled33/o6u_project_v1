@@ -167,17 +167,17 @@ export function AdminDoctorAssignmentsPage() {
   return (
     <Card>
       <h2>Doctor assignments</h2>
-      <p className="page-intro">
+      <p className="font-normal text-muted">
         Choose a doctor, then tick the subjects they teach. An assignment is a permission: it decides which subjects the
         doctor can see and whose question bank they can manage.
       </p>
-      <p className="muted">{ASSIGNMENT_CONSEQUENCE}</p>
+      <p className="font-normal text-muted">{ASSIGNMENT_CONSEQUENCE}</p>
 
       {listError && <Alert>{listError}</Alert>}
       {loadError && <Alert>{loadError}</Alert>}
       {notice && <Alert variant="success">{notice}</Alert>}
 
-      <div className="form-stack">
+      <div className="mt-5 grid gap-[18px]">
         <Field label="Doctor" htmlFor="assignment-doctor">
           <Select id="assignment-doctor" value={doctorId} disabled={saving} onChange={(event) => selectDoctor(event.target.value)}>
             <option value="">Select a doctor</option>
@@ -209,15 +209,15 @@ export function AdminDoctorAssignmentsPage() {
         ) : subjects.length === 0 ? (
           <EmptyState>There are no subjects yet, so there is nothing to assign. Create a subject first.</EmptyState>
         ) : (
-          <fieldset className="fieldset-reset">
+          <fieldset className="m-0 grid gap-2.5 border-0 p-0">
             <legend>Subjects assigned to this doctor</legend>
-            <p className="muted">
+            <p className="font-normal text-muted">
               {assignedCount === 0
                 ? 'None ticked. Saving now removes every subject from this doctor.'
                 : `${assignedCount} subject${assignedCount === 1 ? '' : 's'} ticked.`}
             </p>
             {subjects.map((subject) => (
-              <label className="checkbox-row" key={subject.id} htmlFor={`assignment-subject-${subject.id}`}>
+              <label className="flex items-center gap-[9px] font-semibold [&_input]:h-[17px] [&_input]:w-[17px] [&_input]:accent-[#455B8A]" key={subject.id} htmlFor={`assignment-subject-${subject.id}`}>
                 <input
                   id={`assignment-subject-${subject.id}`}
                   type="checkbox"
@@ -231,12 +231,12 @@ export function AdminDoctorAssignmentsPage() {
           </fieldset>
         )}
 
-        <div className="row-actions">
+        <div className="flex flex-wrap items-center gap-2">
           <Button onClick={() => { void save(); }} disabled={saveDisabled}>
             {saving ? 'Saving…' : 'Save assignments'}
           </Button>
           {doctorId && subjects !== null && assignedCount === 0 && (
-            <span className="muted">Saving with nothing ticked clears every subject from this doctor.</span>
+            <span className="font-normal text-muted">Saving with nothing ticked clears every subject from this doctor.</span>
           )}
         </div>
       </div>

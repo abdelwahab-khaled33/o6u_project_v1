@@ -45,7 +45,7 @@ function HomeRedirect() {
 }
 
 function NotFoundPage() {
-  return <main className="not-found"><h1>Page not found</h1><p>The address does not match a page in Exam Platform.</p></main>;
+  return <main className="grid min-h-screen place-content-center gap-3 p-6 text-center"><h1>Page not found</h1><p>The address does not match a page in Exam Platform.</p></main>;
 }
 
 function ExamWizardRoute() {
@@ -60,7 +60,7 @@ function TaQuizWizardRoute() {
 
 export default function App() {
   const { user, loading } = useAuth();
-  if (loading) return <div className="app-loading"><Spinner label="Loading application" />Loading…</div>;
+  if (loading) return <div className="flex min-h-screen items-center justify-center gap-2.5 text-muted"><Spinner label="Loading application" />Loading…</div>;
 
   return (
     <Routes>

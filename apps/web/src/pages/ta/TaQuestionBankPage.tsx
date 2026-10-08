@@ -56,7 +56,7 @@ function QuestionFilterBar({
   onReset: () => void;
 }) {
   return (
-    <form className="filter-bar" onSubmit={(event: FormEvent<HTMLFormElement>) => event.preventDefault()}>
+    <form className="flex flex-wrap items-end gap-3 rounded-[14px] border border-[#dfe5f0] bg-white p-4 shadow-[0_4px_14px_rgb(36_52_80/7%)]" onSubmit={(event: FormEvent<HTMLFormElement>) => event.preventDefault()}>
       <Field label="Search text" htmlFor="ta-bank-search">
         <Input
           id="ta-bank-search"
@@ -88,7 +88,7 @@ function QuestionFilterBar({
           <option value="others">Only colleagues'</option>
         </Select>
       </Field>
-      <div className="row-actions">
+      <div className="flex flex-wrap items-center gap-2">
         <Button type="button" variant="text" onClick={onReset}>Clear filters</Button>
       </div>
     </form>
@@ -150,14 +150,14 @@ function QuestionImportCard({ subject, onImported }: { subject: Subject | null; 
   }
 
   return (
-    <Card className="stacked-card">
+    <Card className="mt-5">
       <h2>Excel import</h2>
-      <p className="page-intro">
+      <p className="font-normal text-muted">
         Bulk questions are text only. Check the dry run before committing, and commit only the same file you
         checked. Imported questions join the shared bank for the selected subject and are attributed to you.
       </p>
 
-      <form className="form-stack" onSubmit={(event) => { void dryRun(event); }}>
+      <form className="mt-5 grid gap-[18px]" onSubmit={(event) => { void dryRun(event); }}>
         <Field label="Excel file" htmlFor="ta-question-import-file">
           <Input
             id="ta-question-import-file"
@@ -172,7 +172,7 @@ function QuestionImportCard({ subject, onImported }: { subject: Subject | null; 
             }}
           />
         </Field>
-        <div className="row-actions">
+        <div className="flex flex-wrap items-center gap-2">
           <Button type="submit" variant="secondary" disabled={!file || loading}>
             {loading ? 'Checking…' : 'Run dry run'}
           </Button>
@@ -182,7 +182,7 @@ function QuestionImportCard({ subject, onImported }: { subject: Subject | null; 
         </div>
       </form>
 
-      <div className="form-stack">
+      <div className="mt-5 grid gap-[18px]">
         {error && <Alert>{error}</Alert>}
         {success && <Alert variant="success">{success}</Alert>}
         {loading && <div><Spinner label="Processing import" /> Processing import…</div>}
@@ -201,7 +201,7 @@ function QuestionImportCard({ subject, onImported }: { subject: Subject | null; 
                 ))}
               </tbody>
             </Table>
-            <p className="muted">
+            <p className="font-normal text-muted">
               Exporting writes exactly this format, so export, edit in Excel and re-import round-trips. Two limits are
               known: an option whose text contains a pipe character cannot survive the round trip, because the importer
               splits options on the pipe; and Image Filename is a reference only, so an exported bank keeps the text,
@@ -236,7 +236,7 @@ function QuestionImportCard({ subject, onImported }: { subject: Subject | null; 
                 {subject ? `Commit import to ${subject.code}` : 'Commit import'}
               </Button>
             )}
-            {!subject && <p className="muted">Select a subject above before committing, because questions are filed per subject.</p>}
+            {!subject && <p className="font-normal text-muted">Select a subject above before committing, because questions are filed per subject.</p>}
           </section>
         )}
       </div>
@@ -370,7 +370,7 @@ export function TaQuestionBankPage() {
     <div>
       <Card>
         <h2>Shared question bank</h2>
-        <p className="page-intro">
+        <p className="font-normal text-muted">
           The bank is shared per subject: every TA who teaches a section of that subject sees these questions, and
           each row shows who wrote it. You can edit and delete only the questions you added yourself — that limit is
           decided by the server, and the buttons below follow it rather than re-checking anything in the browser.
@@ -378,7 +378,7 @@ export function TaQuestionBankPage() {
         {error && <Alert>{error}</Alert>}
         {notice && <Alert variant="success">{notice}</Alert>}
 
-        <div className="form-stack">
+        <div className="mt-5 grid gap-[18px]">
           {loadingSubjects ? (
             <div><Spinner label="Loading subjects" /> Loading subjects…</div>
           ) : subjects.length === 0 ? (
@@ -388,7 +388,7 @@ export function TaQuestionBankPage() {
             </EmptyState>
           ) : (
             <>
-              <div className="filter-bar">
+              <div className="flex flex-wrap items-end gap-3 rounded-[14px] border border-[#dfe5f0] bg-white p-4 shadow-[0_4px_14px_rgb(36_52_80/7%)]">
                 <Field label="Subject" htmlFor="ta-bank-subject">
                   <Select
                     id="ta-bank-subject"
@@ -405,7 +405,7 @@ export function TaQuestionBankPage() {
                     ))}
                   </Select>
                 </Field>
-                <div className="row-actions">
+                <div className="flex flex-wrap items-center gap-2">
                   <Button
                     variant="secondary"
                     disabled={!selectedSubject || exporting}
@@ -417,7 +417,7 @@ export function TaQuestionBankPage() {
               </div>
 
               {selectedSubject && (
-                <p className="muted">
+                <p className="font-normal text-muted">
                   Showing {plural(visibleQuestions.length, 'questions')} of {questions.length} in{' '}
                   {selectedSubject.code} — {selectedSubject.name}. {plural(mineCount, 'questions')} of them{' '}
                   {mineCount === 1 ? 'is' : 'are'} yours to edit.
@@ -429,7 +429,7 @@ export function TaQuestionBankPage() {
               ) : (
                 <>
                   {(creating || editing) && (
-                    <Card className="detail-card">
+                    <Card className="mt-2 border-t-4 border-t-accent">
                       <QuestionForm
                         key={editing ? editing.id : 'new'}
                         subject={selectedSubject}
@@ -488,28 +488,28 @@ export function TaQuestionBankPage() {
                           return (
                             <tr key={question.id}>
                               <td>
-                                <div className="question-text">{question.text}</div>
+                                <div className="max-w-[460px] [overflow-wrap:anywhere]">{question.text}</div>
                                 {question.question_type === 'mcq' ? (
-                                  <ul className="option-preview">
+                                  <ul className="grid gap-[3px] pl-5 font-normal text-muted">
                                     {question.options.map((option, index) => (
                                       <li
                                         key={`${index}-${option}`}
-                                        className={option === question.correct_answer ? 'is-correct' : undefined}
+                                        className={option === question.correct_answer ? 'font-bold text-[#147a47]' : undefined}
                                       >
                                         {option} — {option === question.correct_answer ? 'correct' : `option ${index + 1}`}
                                       </li>
                                     ))}
                                   </ul>
                                 ) : (
-                                  <p className="muted">Correct answer: {question.correct_answer === 'true' ? 'True' : 'False'}</p>
+                                  <p className="font-normal text-muted">Correct answer: {question.correct_answer === 'true' ? 'True' : 'False'}</p>
                                 )}
                                 {question.image_url && (
-                                  <img className="image-preview" src={question.image_url} alt="Attached question" />
+                                  <img className="max-w-[160px] rounded-md border border-[#dfe5f0] bg-white" src={question.image_url} alt="Attached question" />
                                 )}
                               </td>
                               <td>
                                 <div>{authorLabel(question)}</div>
-                                <div className="muted">{question.is_mine === true ? 'yours' : 'a colleague\'s'}</div>
+                                <div className="font-normal text-muted">{question.is_mine === true ? 'yours' : 'a colleague\'s'}</div>
                               </td>
                               <td>{TYPE_LABELS[question.question_type]}</td>
                               <td>{question.difficulty}</td>
@@ -517,7 +517,7 @@ export function TaQuestionBankPage() {
                               <td>{formatDateTime(question.created_at)}</td>
                               <td>
                                 {manageable ? (
-                                  <div className="row-actions">
+                                  <div className="flex flex-wrap items-center gap-2">
                                     <Button
                                       variant="secondary"
                                       onClick={() => { setCreating(false); setEditing(question); setConfirmDelete(null); }}
@@ -526,7 +526,7 @@ export function TaQuestionBankPage() {
                                     </Button>
                                     {confirmDelete === question.id ? (
                                       <>
-                                        <span className="muted">Delete this question?</span>
+                                        <span className="font-normal text-muted">Delete this question?</span>
                                         <Button
                                           variant="danger"
                                           disabled={busyId === question.id}
@@ -543,7 +543,7 @@ export function TaQuestionBankPage() {
                                     )}
                                   </div>
                                 ) : (
-                                  <span className="muted">Read only — written by {authorLabel(question)}</span>
+                                  <span className="font-normal text-muted">Read only — written by {authorLabel(question)}</span>
                                 )}
                               </td>
                             </tr>

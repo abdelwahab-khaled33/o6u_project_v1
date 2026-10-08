@@ -201,14 +201,14 @@ export function QuestionForm({ subject, question, onSaved, onCancel }: QuestionF
 
   return (
     <form
-      className="form-stack"
+      className="mt-5 grid gap-[18px]"
       onSubmit={(event) => {
         event.preventDefault();
         void submit();
       }}
     >
       <h3>{editing ? 'Edit question' : 'Add question'}</h3>
-      <p className="page-intro">
+      <p className="font-normal text-muted">
         Subject: {subject.code} — {subject.name}
         {editing && ' (a question cannot move to another subject)'}
       </p>
@@ -229,10 +229,10 @@ export function QuestionForm({ subject, question, onSaved, onCancel }: QuestionF
       </Field>
 
       {questionType === 'mcq' ? (
-        <fieldset className="fieldset-reset">
-          <legend className="muted">Options — tick the correct answer ({MIN_OPTIONS} to {MAX_OPTIONS})</legend>
+        <fieldset className="m-0 grid gap-2.5 border-0 p-0">
+          <legend className="font-normal text-muted">Options — tick the correct answer ({MIN_OPTIONS} to {MAX_OPTIONS})</legend>
           {options.map((option, index) => (
-            <div className="option-row" key={index}>
+            <div className="flex items-center gap-2.5 [&_input]:h-[17px] [&_input]:w-[17px] [&_input]:flex-none [&_input]:accent-[#455B8A]" key={index}>
               <input
                 id={`question-option-correct-${index}`}
                 type="radio"
@@ -264,10 +264,10 @@ export function QuestionForm({ subject, question, onSaved, onCancel }: QuestionF
           </div>
         </fieldset>
       ) : (
-        <fieldset className="fieldset-reset">
-          <legend className="muted">Correct answer</legend>
+        <fieldset className="m-0 grid gap-2.5 border-0 p-0">
+          <legend className="font-normal text-muted">Correct answer</legend>
           {(['true', 'false'] as const).map((value) => (
-            <label className="checkbox-row" key={value} htmlFor={`question-truth-${value}`}>
+            <label className="flex items-center gap-[9px] font-semibold [&_input]:h-[17px] [&_input]:w-[17px] [&_input]:accent-[#455B8A]" key={value} htmlFor={`question-truth-${value}`}>
               <input
                 id={`question-truth-${value}`}
                 type="radio"
@@ -278,7 +278,7 @@ export function QuestionForm({ subject, question, onSaved, onCancel }: QuestionF
               {value === 'true' ? 'True' : 'False'}
             </label>
           ))}
-          <p className="muted">True / False questions carry no option list; the exam snapshot supplies True and False.</p>
+          <p className="font-normal text-muted">True / False questions carry no option list; the exam snapshot supplies True and False.</p>
         </fieldset>
       )}
 
@@ -293,7 +293,7 @@ export function QuestionForm({ subject, question, onSaved, onCancel }: QuestionF
           required
         />
       </Field>
-      <p className="muted">
+      <p className="font-normal text-muted">
         Must be greater than 0. The grade is kept with the question for your own records; an exam scores with its own
         single points-per-question setting, so this value does not decide what a student is awarded.
       </p>
@@ -317,11 +317,11 @@ export function QuestionForm({ subject, question, onSaved, onCancel }: QuestionF
           onChange={(event) => { void handleImageChange(event.target.files?.[0] ?? null); }}
         />
       </Field>
-      {uploading && <p className="muted">Uploading image…</p>}
-      {!uploading && imageName !== '' && <p className="muted">Attached {imageName}.</p>}
+      {uploading && <p className="font-normal text-muted">Uploading image…</p>}
+      {!uploading && imageName !== '' && <p className="font-normal text-muted">Attached {imageName}.</p>}
       {imageUrl !== '' && (
-        <div className="row-actions">
-          <img className="image-preview" src={imageUrl} alt="Attached question" />
+        <div className="flex flex-wrap items-center gap-2">
+          <img className="max-w-[160px] rounded-md border border-[#dfe5f0] bg-white" src={imageUrl} alt="Attached question" />
           <Button type="button" variant="text" onClick={() => { setImageName(''); setImageUrl(''); }}>
             Remove image
           </Button>
@@ -329,12 +329,12 @@ export function QuestionForm({ subject, question, onSaved, onCancel }: QuestionF
       )}
 
       {!valid && (
-        <ul className="requirement-list">
+        <ul className="m-0 grid gap-1 pl-5 font-normal text-muted">
           {problems.map((problem) => <li key={problem}>{problem}</li>)}
         </ul>
       )}
 
-      <div className="row-actions">
+      <div className="flex flex-wrap items-center gap-2">
         <Button type="submit" disabled={!valid || saving || uploading}>
           {saving ? 'Saving…' : editing ? 'Save question' : 'Add question'}
         </Button>

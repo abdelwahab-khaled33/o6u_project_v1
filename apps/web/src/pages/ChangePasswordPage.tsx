@@ -15,7 +15,7 @@ export default function ChangePasswordPage() {
   const [submitting, setSubmitting] = useState(false);
 
   if (!user?.canChangePassword) {
-    return <Card className="account-card"><h1>Change password</h1><Alert variant="info">Password changes are unavailable for this account.</Alert></Card>;
+    return <Card className="max-w-[680px]"><h1>Change password</h1><Alert variant="info">Password changes are unavailable for this account.</Alert></Card>;
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -36,10 +36,10 @@ export default function ChangePasswordPage() {
   }
 
   return (
-    <Card className="account-card">
+    <Card className="max-w-[680px]">
       <h1>Change password</h1>
-      <p className="page-intro">Choose a new password between 8 and 72 characters.</p>
-      <form className="form-stack" onSubmit={handleSubmit}>
+      <p className="font-normal text-muted">Choose a new password between 8 and 72 characters.</p>
+      <form className="mt-5 grid gap-[18px]" onSubmit={handleSubmit}>
         <Field label="Current password" htmlFor="current-password"><Input id="current-password" type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} autoComplete="current-password" required /></Field>
         <Field label="New password" htmlFor="new-password"><Input id="new-password" type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} autoComplete="new-password" minLength={8} maxLength={72} required /></Field>
         {error && <Alert>{error}</Alert>}

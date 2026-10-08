@@ -102,16 +102,16 @@ export function AdminSectionsPage() {
   return (
     <Card>
       <h2>Sections</h2>
-      <p className="page-intro">
+      <p className="font-normal text-muted">
         Filter sections by subject and create sections with an assigned TA. A section always belongs to one subject: to move it, create a new section. Deletion is refused while memberships or exam targets still depend on it.
       </p>
       {error && <Alert>{error}</Alert>}
       {notice && <Alert variant="success">{notice}</Alert>}
 
       {editing && (
-        <form className="form-stack" onSubmit={(event) => { void submit(event); }}>
+        <form className="mt-5 grid gap-[18px]" onSubmit={(event) => { void submit(event); }}>
           <h3>Edit section — {editing.name}</h3>
-          <p className="page-intro">
+          <p className="font-normal text-muted">
             Subject: {editingSubject ? `${editingSubject.code} — ${editingSubject.name}` : editing.subject.code}
           </p>
           <Field label="Name" htmlFor="edit-section-name">
@@ -122,7 +122,7 @@ export function AdminSectionsPage() {
               {tas.map((ta) => <option key={ta.id} value={ta.id}>{ta.full_name}</option>)}
             </Select>
           </Field>
-          <div className="row-actions">
+          <div className="flex flex-wrap items-center gap-2">
             <Button type="submit" disabled={saving || tas.length === 0}>{saving ? 'Saving…' : 'Save section'}</Button>
             <Button type="button" variant="secondary" onClick={() => setEditing(null)}>Cancel</Button>
           </div>
@@ -130,7 +130,7 @@ export function AdminSectionsPage() {
       )}
 
       {creating && (
-        <form className="form-stack" onSubmit={(event) => { void submit(event); }}>
+        <form className="mt-5 grid gap-[18px]" onSubmit={(event) => { void submit(event); }}>
           <h3>Create section</h3>
           <Field label="Name" htmlFor="section-name">
             <Input id="section-name" name="name" required />
@@ -147,14 +147,14 @@ export function AdminSectionsPage() {
               {tas.map((ta) => <option key={ta.id} value={ta.id}>{ta.full_name}</option>)}
             </Select>
           </Field>
-          <div className="row-actions">
+          <div className="flex flex-wrap items-center gap-2">
             <Button type="submit" disabled={saving || subjects.length === 0 || tas.length === 0}>{saving ? 'Saving…' : 'Save section'}</Button>
             <Button type="button" variant="secondary" onClick={() => setCreating(false)}>Cancel</Button>
           </div>
         </form>
       )}
 
-      <div className="form-stack">
+      <div className="mt-5 grid gap-[18px]">
         {!creating && !editing && <div><Button onClick={() => setCreating(true)}>Create section</Button></div>}
         <Field label="Filter by subject" htmlFor="section-subject-filter">
           <Select id="section-subject-filter" value={filterSubject} onChange={(event) => setFilterSubject(event.target.value)}>
@@ -177,11 +177,11 @@ export function AdminSectionsPage() {
                   <td>{section.ta.full_name}</td>
                   <td>{section._count?.memberships ?? 0}</td>
                   <td>
-                    <div className="row-actions">
+                    <div className="flex flex-wrap items-center gap-2">
                       <Button variant="secondary" onClick={() => { setCreating(false); setEditing(section); setConfirmDelete(null); }}>Edit</Button>
                       {confirmDelete === section.id ? (
                         <>
-                          <span className="muted">Delete {section.name}?</span>
+                          <span className="font-normal text-muted">Delete {section.name}?</span>
                           <Button variant="danger" disabled={busyId === section.id} onClick={() => { void deleteSection(section); }}>
                             {busyId === section.id ? 'Deleting…' : 'Confirm delete'}
                           </Button>
