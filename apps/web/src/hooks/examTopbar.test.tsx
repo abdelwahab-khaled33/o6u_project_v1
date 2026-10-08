@@ -22,6 +22,7 @@ describe('exam focus shell', () => {
   it('shows the sidebar when no exam is running', () => {
     const html = shell(undefined);
     expect(html).toContain('<aside');
+    expect(html).not.toContain('hidden sticky');
     expect(html).toContain('Student workspace');
   });
 
@@ -35,7 +36,7 @@ describe('exam focus shell', () => {
       total: 3,
       flagged: 0,
     });
-    expect(html).not.toContain('<aside');
+    expect(html).toContain('hidden sticky');
     expect(html).toContain('test_1');
     expect(html).toContain('19:41');
     expect(html).toContain('Answered');

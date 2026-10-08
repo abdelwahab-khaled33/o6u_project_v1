@@ -65,37 +65,10 @@ export default function Layout() {
   const { top: examTop } = useExamTopbar();
   if (!user) return <Outlet />;
 
-  if (examTop) {
-    return (
-      <div className="grid min-h-screen bg-[#edf0f6]">
-        <div className="grid min-w-0 grid-rows-[auto_minmax(0,1fr)]">
-          <header className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-[#dfe5f0] bg-white/90 px-7 py-3 backdrop-blur max-md:px-4 max-md:py-2.5">
-            <span className="min-w-0 truncate font-bold text-primary-dark">{examTop.title}</span>
-            <span className="flex flex-wrap items-center gap-x-5 gap-y-1">
-              <span className="flex items-baseline gap-2">
-                <span className="text-[0.78rem] font-bold uppercase tracking-[0.05em] text-muted">Time left</span>
-                <strong className={`font-extrabold tabular-nums text-[1.1rem] ${examTop.expired ? 'text-[#b42318]' : examTop.shortClock ? 'text-accent' : 'text-primary-dark'}`}>{examTop.timeLeft}</strong>
-              </span>
-              <span className="flex items-baseline gap-2">
-                <span className="text-[0.78rem] font-bold uppercase tracking-[0.05em] text-muted">Answered</span>
-                <strong className="font-extrabold tabular-nums">{examTop.answered}/{examTop.total}</strong>
-              </span>
-              <span className="flex items-baseline gap-2">
-                <span className="text-[0.78rem] font-bold uppercase tracking-[0.05em] text-muted">Flagged</span>
-                <strong className="font-extrabold tabular-nums">{examTop.flagged}</strong>
-              </span>
-            </span>
-          </header>
-          <main className="mx-auto w-full max-w-[1160px] px-7 pb-12 pt-7 max-md:px-4 max-md:py-5"><Outlet /></main>
-        </div>
-      </div>
-    );
-  }
-
   const items = NAV_BY_ROLE[user.role];
   return (
-    <div className="grid min-h-screen bg-[#edf0f6] md:grid-cols-[76px_minmax(0,1fr)] lg:grid-cols-[252px_minmax(0,1fr)]">
-      <aside aria-label="Primary" className="sticky top-0 flex h-screen flex-col gap-[18px] bg-gradient-to-b from-[#304269] to-[#232f4d] px-3.5 pb-4 pt-5 text-[#e9edf7] max-md:static max-md:h-auto max-md:flex-row max-md:items-center max-md:gap-2.5 max-md:px-3 max-md:py-2.5">
+    <div className={`grid min-h-screen bg-[#edf0f6] ${examTop ? '' : 'md:grid-cols-[76px_minmax(0,1fr)] lg:grid-cols-[252px_minmax(0,1fr)]'}`.trim()}>
+      <aside aria-label="Primary" className={`${examTop ? 'hidden' : ''} sticky top-0 flex h-screen flex-col gap-[18px] bg-gradient-to-b from-[#304269] to-[#232f4d] px-3.5 pb-4 pt-5 text-[#e9edf7] max-md:static max-md:h-auto max-md:flex-row max-md:items-center max-md:gap-2.5 max-md:px-3 max-md:py-2.5`.trim()}>
         <Link to={homeByRole[user.role]} className="flex flex-col items-center gap-2 px-3 pt-1 text-inherit no-underline md:justify-center">
           <span className="grid w-full place-items-center rounded-2xl bg-white/95 px-3 py-1.5 shadow-[0_2px_8px_rgb(0_0_0/25%)]">
             <O6ULogo size="lg" />
@@ -136,7 +109,27 @@ export default function Layout() {
       </aside>
       <div className="grid min-w-0 grid-rows-[auto_minmax(0,1fr)]">
         <header className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-[#dfe5f0] bg-white/90 px-7 py-3.5 backdrop-blur max-md:px-4 max-md:py-3">
-          <span className="font-bold text-primary-dark">{workspaceByRole[user.role]}</span>
+          {examTop ? (
+            <>
+              <span className="min-w-0 truncate font-bold text-primary-dark">{examTop.title}</span>
+              <span className="flex flex-wrap items-center gap-x-5 gap-y-1">
+                <span className="flex items-baseline gap-2">
+                  <span className="text-[0.78rem] font-bold uppercase tracking-[0.05em] text-muted">Time left</span>
+                  <strong className={`font-extrabold tabular-nums text-[1.1rem] ${examTop.expired ? 'text-[#b42318]' : examTop.shortClock ? 'text-accent' : 'text-primary-dark'}`}>{examTop.timeLeft}</strong>
+                </span>
+                <span className="flex items-baseline gap-2">
+                  <span className="text-[0.78rem] font-bold uppercase tracking-[0.05em] text-muted">Answered</span>
+                  <strong className="font-extrabold tabular-nums">{examTop.answered}/{examTop.total}</strong>
+                </span>
+                <span className="flex items-baseline gap-2">
+                  <span className="text-[0.78rem] font-bold uppercase tracking-[0.05em] text-muted">Flagged</span>
+                  <strong className="font-extrabold tabular-nums">{examTop.flagged}</strong>
+                </span>
+              </span>
+            </>
+          ) : (
+            <span className="font-bold text-primary-dark">{workspaceByRole[user.role]}</span>
+          )}
         </header>
         <main className="mx-auto w-full max-w-[1160px] px-7 pb-12 pt-7 max-md:px-4 max-md:py-5"><Outlet /></main>
       </div>
