@@ -1,6 +1,7 @@
 import { Navigate, Outlet, Route, Routes, useParams } from 'react-router-dom';
 import type { Role } from '@exam/shared';
 import Layout from './components/Layout';
+import { ExamTopbarProvider } from './hooks/examTopbar';
 import { Spinner } from './components/ui/Spinner';
 import { useAuth } from './hooks/useAuth';
 import ChangePasswordPage from './pages/ChangePasswordPage';
@@ -66,7 +67,7 @@ export default function App() {
     <Routes>
       <Route path="/login" element={user ? <Navigate to={roleHomes[user.role]} replace /> : <LoginPage />} />
       <Route element={<RequireRole roles={['admin', 'doctor', 'ta', 'student']} />}>
-        <Route element={<Layout />}>
+        <Route element={<ExamTopbarProvider><Layout /></ExamTopbarProvider>}>
           <Route path="/" element={<HomeRedirect />} />
           <Route path="/account/change-password" element={<ChangePasswordPage />} />
           <Route element={<RequireRole roles={['admin']} />}>

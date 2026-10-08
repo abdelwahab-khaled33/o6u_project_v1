@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Spinner';
 import { api } from '../../lib/api';
 import { STATUS_PILL } from '../../lib/statusTone';
+import { useExamTopbar } from '../../hooks/examTopbar';
 import { messageFrom } from '../admin/adminShared';
 import {
   answerChoices,
@@ -61,6 +62,8 @@ export function StudentExamRunner({ exam, attempt, questions: initialQuestions, 
   const remaining = remainingMs(attempt.deadline_at, offsetMs, now);
   const expired = attempt.deadline_at != null && isTimeUp(remaining);
   const progress = useMemo(() => progressSummary(questions), [questions]);
+
+  const { setTop } = useExamTopbar();
   const pendingSave = Object.values(saves).some((entry) => entry?.phase === 'saving');
 
   useEffect(() => {
@@ -236,6 +239,19 @@ export function StudentExamRunner({ exam, attempt, questions: initialQuestions, 
   }
 
   const shortClock = remaining > 0 && remaining <= SHORT_CLOCK_MS;
+
+  useEffect(() => {
+    setTop({
+      title: exam.title,
+      timeLeft: expired ? 'Time is up' : formatCountdown(remaining),
+      shortClock,
+      expired,
+      answered: progress.answered,
+      total: progress.total,
+      flagged: progress.flagged,
+    });
+    return () => setTop(null);
+  }, [setTop, exam.title, remaining, expired, shortClock, progress]);
 
   return (
     <div

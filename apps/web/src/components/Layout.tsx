@@ -1,5 +1,6 @@
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useExamTopbar } from '../hooks/examTopbar';
 import type { Role } from '@exam/shared';
 import { O6ULogo } from './brand/O6ULogo';
 
@@ -61,7 +62,35 @@ function NavIcon({ name, className = '' }: { name: string; className?: string })
 
 export default function Layout() {
   const { user, logout } = useAuth();
+  const { top: examTop } = useExamTopbar();
   if (!user) return <Outlet />;
+
+  if (examTop) {
+    return (
+      <div className="grid min-h-screen bg-[#edf0f6]">
+        <div className="grid min-w-0 grid-rows-[auto_minmax(0,1fr)]">
+          <header className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-[#dfe5f0] bg-white/90 px-7 py-3 backdrop-blur max-md:px-4 max-md:py-2.5">
+            <span className="min-w-0 truncate font-bold text-primary-dark">{examTop.title}</span>
+            <span className="flex flex-wrap items-center gap-x-5 gap-y-1">
+              <span className="flex items-baseline gap-2">
+                <span className="text-[0.78rem] font-bold uppercase tracking-[0.05em] text-muted">Time left</span>
+                <strong className={`font-extrabold tabular-nums text-[1.1rem] ${examTop.expired ? 'text-[#b42318]' : examTop.shortClock ? 'text-accent' : 'text-primary-dark'}`}>{examTop.timeLeft}</strong>
+              </span>
+              <span className="flex items-baseline gap-2">
+                <span className="text-[0.78rem] font-bold uppercase tracking-[0.05em] text-muted">Answered</span>
+                <strong className="font-extrabold tabular-nums">{examTop.answered}/{examTop.total}</strong>
+              </span>
+              <span className="flex items-baseline gap-2">
+                <span className="text-[0.78rem] font-bold uppercase tracking-[0.05em] text-muted">Flagged</span>
+                <strong className="font-extrabold tabular-nums">{examTop.flagged}</strong>
+              </span>
+            </span>
+          </header>
+          <main className="mx-auto w-full max-w-[1160px] px-7 pb-12 pt-7 max-md:px-4 max-md:py-5"><Outlet /></main>
+        </div>
+      </div>
+    );
+  }
 
   const items = NAV_BY_ROLE[user.role];
   return (
