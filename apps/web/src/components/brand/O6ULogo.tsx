@@ -1,12 +1,19 @@
+import { useState } from 'react';
+
 export const O6U_LOGO_SRC = '/o6u-logo.png';
 
 const LOGO_HEIGHTS = { sm: 32, md: 44, lg: 60 } as const;
 
 export type O6ULogoSize = keyof typeof LOGO_HEIGHTS;
 
+export function resolveLogoFallback(imageMissing: boolean, errored: boolean): boolean {
+  return imageMissing || errored;
+}
+
 export function O6ULogo({ size = 'md', imageMissing = false }: { size?: O6ULogoSize; imageMissing?: boolean }) {
+  const [errored, setErrored] = useState(false);
   const height = LOGO_HEIGHTS[size];
-  if (imageMissing) {
+  if (resolveLogoFallback(imageMissing, errored)) {
     return (
       <svg height={height} viewBox="0 0 64 64" role="img" aria-label="October 6 University logo" className="shrink-0">
         <rect x="2" y="2" width="60" height="60" rx="14" fill="#455B8A" />
@@ -20,6 +27,7 @@ export function O6ULogo({ size = 'md', imageMissing = false }: { size?: O6ULogoS
       src={O6U_LOGO_SRC}
       alt="October 6 University logo"
       height={height}
+      onError={() => setErrored(true)}
       className="w-auto shrink-0 object-contain"
       style={{ height }}
     />

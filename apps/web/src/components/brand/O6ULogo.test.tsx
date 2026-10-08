@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { O6ULogo } from './O6ULogo';
+import { O6ULogo, resolveLogoFallback } from './O6ULogo';
 
 describe('O6ULogo', () => {
   it('renders the official logo image by default', () => {
@@ -20,5 +20,11 @@ describe('O6ULogo', () => {
     expect(renderToStaticMarkup(<O6ULogo size="sm" />)).toContain('height="32"');
     expect(renderToStaticMarkup(<O6ULogo size="md" />)).toContain('height="44"');
     expect(renderToStaticMarkup(<O6ULogo size="lg" />)).toContain('height="60"');
+  });
+
+  it('shows the fallback when the image is missing or failed to load', () => {
+    expect(resolveLogoFallback(false, false)).toBe(false);
+    expect(resolveLogoFallback(true, false)).toBe(true);
+    expect(resolveLogoFallback(false, true)).toBe(true);
   });
 });
