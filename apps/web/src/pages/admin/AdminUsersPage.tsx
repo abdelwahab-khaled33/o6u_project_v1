@@ -51,8 +51,12 @@ function CanChangePasswordField({ role, defaultChecked, id }: { role: string; de
   );
 }
 
-function CreateUserCard({ subjects, sections, onCreated }: { subjects: Subject[]; sections: Section[]; onCreated: () => void }) {
-  const [open, setOpen] = useState(false);
+function roleLabel(role: string): string {
+  if (role === 'ta') return 'TA';
+  return role.charAt(0).toUpperCase() + role.slice(1);
+}
+
+function CreateUserCard({ subjects, sections, open, onOpenChange, onCreated }: { subjects: Subject[]; sections: Section[]; open: boolean; onOpenChange: (open: boolean) => void; onCreated: () => void }) {
   const [role, setRole] = useState<string>('student');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -157,7 +161,7 @@ function CreateUserCard({ subjects, sections, onCreated }: { subjects: Subject[]
       } else {
         setCreated(`Created ${result.user.username} (${createdRole}).`);
       }
-      setOpen(false);
+      onOpenChange(false);
       resetPicks();
       onCreated();
     } catch (caught) {
@@ -168,17 +172,17 @@ function CreateUserCard({ subjects, sections, onCreated }: { subjects: Subject[]
   }
 
   if (!open) {
+    if (!created && !note) return null;
     return (
-      <div className="mt-5 grid gap-[18px]">
+      <>
         {created && <Alert variant="success">{created}</Alert>}
         {note && <Alert variant="info">{note}</Alert>}
-        <div><Button onClick={() => { setOpen(true); setCreated(null); setNote(null); }}>Create user</Button></div>
-      </div>
+      </>
     );
   }
 
   return (
-    <form className="mt-5 grid gap-[18px]" onSubmit={(event) => { void submit(event); }}>
+    <form className="grid gap-[18px]" onSubmit={(event) => { void submit(event); }}>
       <h3>Create user</h3>
       {error && <Alert>{error}</Alert>}
       <Field label="Username" htmlFor="new-username">
@@ -271,7 +275,7 @@ function CreateUserCard({ subjects, sections, onCreated }: { subjects: Subject[]
       </label>
       <div className="flex flex-wrap items-center gap-2">
         <Button type="submit" disabled={saving || pickProblems.length > 0}>{saving ? 'Creating…' : 'Create user'}</Button>
-        <Button type="button" variant="secondary" onClick={() => { setOpen(false); setError(null); resetPicks(); }}>Cancel</Button>
+        <Button type="button" variant="secondary" onClick={() => { onOpenChange(false); setError(null); resetPicks(); }}>Cancel</Button>
       </div>
     </form>
   );
@@ -757,6 +761,7 @@ export function AdminUsersPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [detail, setDetail] = useState<AdminUser | null>(null);
+  const [creating, setCreating] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const detailRef = useRef<HTMLDivElement>(null);
 
@@ -864,9 +869,14 @@ export function AdminUsersPage() {
   const to = Math.min(total, page * PAGE_SIZE);
 
   return (
-    <Card>
-      <h2>Users</h2>
-      <p className="font-normal text-muted">Search and filter server-side, then open a user to edit the account, reset its password, manage enrollment, or assign a doctor&rsquo;s subjects.</p>
+    <div>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="grid gap-1.5">
+          <h2>Users</h2>
+          <p className="font-normal text-muted">Search and filter, then open a user to edit the account, reset the password, manage enrollment or assign a doctor&rsquo;s subjects.</p>
+        </div>
+        <Button onClick={() => { setCreating(true); }}>+ Create user</Button>
+      </div>
       <div className="mt-5 grid gap-[18px]">
         {error && <Alert>{error}</Alert>}
         {notice && <Alert variant="success" >{notice}</Alert>}
@@ -899,12 +909,12 @@ export function AdminUsersPage() {
             </Select>
           </Field>
           <div className="flex flex-wrap items-center gap-2">
-            <Button type="submit" variant="secondary">Search</Button>
+            <Button type="submit">Search</Button>
             <Button type="button" variant="text" onClick={() => { setSearchDraft(''); applyFilters(NO_FILTERS); }}>Clear filters</Button>
           </div>
         </form>
 
-        <CreateUserCard subjects={subjects} sections={sections} onCreated={() => { void refreshAll(); }} />
+        <CreateUserCard subjects={subjects} sections={sections} open={creating} onOpenChange={setCreating} onCreated={() => { void refreshAll(); }} />
 
         {detail && (
           <div ref={detailRef} className="scroll-mt-24">
@@ -925,33 +935,48 @@ export function AdminUsersPage() {
           <EmptyState>No users match these filters.</EmptyState>
         ) : (
           <>
-            <Table>
+            <Table className="[&_th]:border-b [&_th]:border-[#dfe5f0] [&_th]:bg-white [&_th]:text-[0.72rem] [&_th]:font-bold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-[#5b6b8c] [&_td]:py-3.5">
               <thead>
                 <tr>
                   <th>Username</th>
                   <th>Full name</th>
                   <th>Role</th>
                   <th>Student code</th>
-                  <th>Active</th>
+                  <th>Status</th>
                   <th>Created</th>
-                  <th>Actions</th>
+                  <th><span className="sr-only">Actions</span></th>
                 </tr>
               </thead>
               <tbody>
                 {users.map((user) => (
                   <tr key={user.id}>
-                    <td>{user.username}</td>
+                    <td>
+                      <span className="flex items-center gap-2.5">
+                        <span aria-hidden="true" className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-[#e8edf6] font-bold text-primary-dark">
+                          {user.username.charAt(0).toUpperCase()}
+                        </span>
+                        <strong className="font-bold text-primary-dark">{user.username}</strong>
+                      </span>
+                    </td>
                     <td>{user.full_name}</td>
-                    <td>{user.role}</td>
+                    <td>
+                      <span className="inline-block rounded-full bg-[#e8edf6] px-3 py-1 text-[0.82rem] font-semibold text-primary-dark">
+                        {roleLabel(user.role)}
+                      </span>
+                    </td>
                     <td>{user.student_code ?? '—'}</td>
-                    <td>{user.is_active ? 'Yes' : 'No'}</td>
+                    <td>
+                      <span className="flex items-center gap-2">
+                        <span aria-hidden="true" className={`h-2 w-2 flex-none rounded-full ${user.is_active ? 'bg-primary-dark' : 'bg-[#9aa7c2]'}`} />
+                        {user.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
                     <td>{formatDateTime(user.created_at)}</td>
                     <td className="whitespace-nowrap">
                       <div className="table-actions flex flex-nowrap items-center gap-2">
                         <Button variant="secondary" onClick={() => { setDetail(user); }}>Open</Button>
-                        <span className="mx-1 h-6 w-px flex-none bg-[#dfe5f0]" aria-hidden="true" />
                         <Button
-                          variant={user.is_active ? 'danger' : 'primary'}
+                          variant={user.is_active ? 'dangerOutline' : 'primary'}
                           disabled={busyId === user.id}
                           onClick={() => { void toggleActive(user); }}
                         >
@@ -976,6 +1001,6 @@ export function AdminUsersPage() {
         )}
 
       </div>
-    </Card>
+    </div>
   );
 }

@@ -6,6 +6,8 @@ import { Spinner } from './components/ui/Spinner';
 import { useAuth } from './hooks/useAuth';
 import ChangePasswordPage from './pages/ChangePasswordPage';
 import LoginPage from './pages/LoginPage';
+import { WelcomePage } from './pages/WelcomePage';
+import { HowItWorksPage } from './pages/HowItWorksPage';
 import DoctorLayout from './pages/doctor/DoctorLayout';
 import { DoctorQuestionBankPage } from './pages/doctor/DoctorQuestionBankPage';
 import { DoctorExamsPage } from './pages/doctor/DoctorExamsPage';
@@ -42,7 +44,8 @@ function RequireRole({ roles }: { roles: Role[] }) {
 
 function HomeRedirect() {
   const { user } = useAuth();
-  return <Navigate to={user ? roleHomes[user.role] : '/login'} replace />;
+  if (user) return <Navigate to={roleHomes[user.role]} replace />;
+  return <WelcomePage />;
 }
 
 function NotFoundPage() {
@@ -66,9 +69,10 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={user ? <Navigate to={roleHomes[user.role]} replace /> : <LoginPage />} />
+      <Route path="/how-it-works" element={<HowItWorksPage />} />
+      <Route path="/" element={<HomeRedirect />} />
       <Route element={<RequireRole roles={['admin', 'doctor', 'ta', 'student']} />}>
         <Route element={<ExamTopbarProvider><Layout /></ExamTopbarProvider>}>
-          <Route path="/" element={<HomeRedirect />} />
           <Route path="/account/change-password" element={<ChangePasswordPage />} />
           <Route element={<RequireRole roles={['admin']} />}>
             <Route path="/admin" element={<AdminLayout />}>
