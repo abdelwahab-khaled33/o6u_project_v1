@@ -1,6 +1,6 @@
 import type { Prisma } from '@prisma/client';
 import type { PermissionKey, Role } from '@exam/shared';
-import { PERMISSION_KEYS, ROLES } from '@exam/shared';
+import { DEFAULT_PERMISSIONS, PERMISSION_KEYS, ROLES } from '@exam/shared';
 import { prisma } from '../lib/prisma.js';
 
 const PERMISSION_KEY_SET = new Set<string>(PERMISSION_KEYS);
@@ -254,6 +254,25 @@ export async function getSubjectDependents(subjectId: string) {
 }
 
 export type RolePermissionMatrix = Record<Role, Record<PermissionKey, boolean>>;
+
+export type DefaultPermissionRow = { role: Role; permission_key: PermissionKey; allowed: boolean };
+
+/**
+ * The 72-row seed rectangle (every role × every key), valued from
+ * DEFAULT_PERMISSIONS — the same source the seed and the permission-matrix
+ * migration read. Reset restores exactly this and nothing else: per-user
+ * overrides are untouched, so a caller holding permissions.manage through an
+ * override cannot lock themselves out by resetting the defaults.
+ */
+export function buildDefaultPermissionRows(): DefaultPermissionRow[] {
+  const rows: DefaultPermissionRow[] = [];
+  for (const role of ROLES) {
+    for (const key of PERMISSION_KEYS) {
+      rows.push({ role, permission_key: key, allowed: DEFAULT_PERMISSIONS[key].includes(role) });
+    }
+  }
+  return rows;
+}
 
 export async function getRolePermissionMatrix(): Promise<RolePermissionMatrix> {
   const rows = await prisma.permission.findMany({ select: { role: true, permission_key: true, allowed: true } });

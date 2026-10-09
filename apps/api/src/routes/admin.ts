@@ -28,6 +28,7 @@ import {
 import { dryRunUserImport, commitUserImport } from '../services/users-import.js';
 import {
   PERMISSIONS_MANAGE,
+  buildDefaultPermissionRows,
   buildUserWhere,
   canChangePasswordForCreate,
   canChangePasswordForPatch,
@@ -798,6 +799,27 @@ adminRouter.patch('/permissions/defaults', requirePermission('permissions.manage
       select: { role: true, permission_key: true, allowed: true },
     });
     return res.json({ permission });
+  } catch (err) {
+    next(err);
+  }
+});
+
+const resetDefaultsSchema = z.object({}).strict();
+
+adminRouter.post('/permissions/defaults/reset', requirePermission('permissions.manage'), async (req, res, next) => {
+  try {
+    const parsed = resetDefaultsSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Reset takes no request body' });
+    }
+    // One transaction: the table holds the full rectangle or the call fails.
+    // Per-user overrides are untouched, so resetting cannot lock the caller out.
+    const rows = buildDefaultPermissionRows();
+    await prisma.$transaction([
+      prisma.permission.deleteMany({}),
+      prisma.permission.createMany({ data: rows }),
+    ]);
+    return res.json({ reset: true, defaults_restored: rows.length });
   } catch (err) {
     next(err);
   }

@@ -95,6 +95,23 @@ td > * + .table-actions {
   outline-offset: 2px;
 }
 
+/* One entrance motion for panels that mount on demand (subject create/edit
+   form and its siblings). The reduced-motion block below disables it. */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-rise {
+  animation: rise-in 0.28s ease-out;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation: none;

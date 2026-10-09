@@ -1,8 +1,7 @@
 /* eslint-disable react-hooks/set-state-in-effect -- this page fetches from the API on mount and whenever a filter changes; the fetched data cannot be derived during render */
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { Alert } from '../../components/ui/Alert';
 import { Button } from '../../components/ui/Button';
-import { Card } from '../../components/ui/Card';
 import { Field, Input } from '../../components/ui/Field';
 import { Spinner } from '../../components/ui/Spinner';
 import { Table } from '../../components/ui/Table';
@@ -74,44 +73,57 @@ export function AdminSubjectsPage() {
   }
 
   const formSubject = editing ?? (creating ? { code: '', name: '' } : null);
+  const formKey = editing ? editing.id : creating ? 'new' : null;
+  const formRef = useRef<HTMLFormElement>(null);
+
+  useEffect(() => {
+    if (!formKey) return;
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [formKey]);
 
   return (
-    <Card>
-      <h2>Subjects</h2>
-      <p className="font-normal text-muted">Create and edit subject codes and names. Deleting a subject never cascades: it is refused while other records still depend on it.</p>
+    <div>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="grid max-w-[560px] gap-1.5">
+          <h2>Subjects</h2>
+          <p className="font-normal leading-relaxed text-muted">Create and edit subject codes and names. Deleting a subject never cascades: it is refused while other records still depend on it.</p>
+        </div>
+        {!creating && !editing && <Button onClick={() => setCreating(true)}>+ Create subject</Button>}
+      </div>
+      <div className="mt-5 grid gap-[18px]">
       {error && <Alert>{error}</Alert>}
       {notice && <Alert variant="success">{notice}</Alert>}
       {formSubject && (
-        <form className="mt-5 grid gap-[18px]" onSubmit={(event) => { void saveSubject(event); }}>
+        <form ref={formRef} className="grid animate-rise scroll-mt-24 gap-[18px] rounded-[14px] border border-[#e3e8f2] bg-white px-5 py-5 shadow-[0_4px_14px_rgb(36_52_80/7%)]" onSubmit={(event) => { void saveSubject(event); }}>
           <h3>{editing ? 'Edit subject' : 'Create subject'}</h3>
-          <Field label="Code" htmlFor="subject-code">
-            <Input id="subject-code" name="code" defaultValue={formSubject.code} maxLength={30} required />
-          </Field>
-          <Field label="Name" htmlFor="subject-name">
-            <Input id="subject-name" name="name" defaultValue={formSubject.name} required />
-          </Field>
+          <div className="grid gap-[18px] md:grid-cols-2">
+            <Field label="Code" htmlFor="subject-code">
+              <Input id="subject-code" name="code" defaultValue={formSubject.code} maxLength={30} placeholder="e.g. CS81143" required />
+            </Field>
+            <Field label="Name" htmlFor="subject-name">
+              <Input id="subject-name" name="name" defaultValue={formSubject.name} placeholder="e.g. Live Verification Subject" required />
+            </Field>
+          </div>
           <div className="flex flex-wrap items-center gap-2">
             <Button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save subject'}</Button>
             <Button type="button" variant="secondary" onClick={() => { setEditing(null); setCreating(false); }}>Cancel</Button>
           </div>
         </form>
       )}
-      <div className="mt-5 grid gap-[18px]">
-        {!creating && !editing && <div><Button onClick={() => setCreating(true)}>Create subject</Button></div>}
         {loading ? (
           <div><Spinner label="Loading subjects" /> Loading subjects…</div>
         ) : subjects.length === 0 ? (
           <EmptyState>No subjects found.</EmptyState>
         ) : (
-          <Table>
+          <Table className="[&_th]:border-b [&_th]:border-[#dfe5f0] [&_th]:bg-white [&_th]:text-[0.72rem] [&_th]:font-bold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-[#5b6b8c] [&_th:last-child]:w-[1%] [&_th:last-child]:text-center [&_td]:py-3.5 [&_td:last-child_.table-actions]:justify-end">
             <thead><tr><th>Code</th><th>Name</th><th>Actions</th></tr></thead>
             <tbody>
               {subjects.map((subject) => (
                 <tr key={subject.id}>
-                  <td>{subject.code}</td>
-                  <td>{subject.name}</td>
-                  <td>
-                    <div className="table-actions flex flex-wrap items-center gap-2">
+                  <td className="font-mono text-[0.9rem] font-semibold text-primary-dark">{subject.code}</td>
+                  <td className="font-normal text-primary-dark">{subject.name}</td>
+                  <td className="whitespace-nowrap">
+                    <div className="table-actions flex flex-nowrap items-center gap-2">
                       <Button variant="secondary" onClick={() => { setCreating(false); setEditing(subject); setConfirmDelete(null); }}>Edit</Button>
                       {confirmDelete === subject.id ? (
                         <>
@@ -122,7 +134,7 @@ export function AdminSubjectsPage() {
                           <Button variant="secondary" onClick={() => setConfirmDelete(null)}>Cancel</Button>
                         </>
                       ) : (
-                        <Button variant="danger" onClick={() => setConfirmDelete(subject.id)}>Delete</Button>
+                        <Button variant="dangerOutline" onClick={() => setConfirmDelete(subject.id)}>Delete</Button>
                       )}
                     </div>
                   </td>
@@ -132,6 +144,6 @@ export function AdminSubjectsPage() {
           </Table>
         )}
       </div>
-    </Card>
+    </div>
   );
 }

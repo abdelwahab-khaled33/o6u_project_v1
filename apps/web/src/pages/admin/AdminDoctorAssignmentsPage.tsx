@@ -2,13 +2,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Alert } from '../../components/ui/Alert';
 import { Button } from '../../components/ui/Button';
-import { Card } from '../../components/ui/Card';
 import { Field, Select } from '../../components/ui/Field';
 import { Spinner } from '../../components/ui/Spinner';
 import { api } from '../../lib/api';
 import { describeError, EmptyState, type AdminUser, type Subject } from './adminShared';
 import {
-  ASSIGNMENT_CONSEQUENCE,
   buildAssignmentBody,
   canSave,
   doctorOptionLabel,
@@ -165,81 +163,105 @@ export function AdminDoctorAssignmentsPage() {
   const saveDisabled = saving || loadingAssignments || !canSave({ doctorId, subjectsLoaded: subjects !== null, assignmentsLoaded });
 
   return (
-    <Card>
-      <h2>Doctor assignments</h2>
-      <p className="font-normal text-muted">
-        Choose a doctor, then tick the subjects they teach. An assignment is a permission: it decides which subjects the
-        doctor can see and whose question bank they can manage.
-      </p>
-      <p className="font-normal text-muted">{ASSIGNMENT_CONSEQUENCE}</p>
-
-      {listError && <Alert>{listError}</Alert>}
-      {loadError && <Alert>{loadError}</Alert>}
-      {notice && <Alert variant="success">{notice}</Alert>}
+    <div>
+      <div className="grid max-w-[560px] gap-1.5">
+        <h2>Doctor assignments</h2>
+        <p className="font-normal leading-relaxed text-muted">
+          Choose a doctor, then tick the subjects they teach. An assignment is a permission: it decides which subjects the doctor can see and whose question bank they manage.
+        </p>
+      </div>
 
       <div className="mt-5 grid gap-[18px]">
-        <Field label="Doctor" htmlFor="assignment-doctor">
-          <Select id="assignment-doctor" value={doctorId} disabled={saving} onChange={(event) => selectDoctor(event.target.value)}>
-            <option value="">Select a doctor</option>
-            {(doctors ?? []).map((doctor) => (
-              <option key={doctor.id} value={doctor.id}>{doctorOptionLabel(doctor)}</option>
-            ))}
-          </Select>
-        </Field>
+        {listError && <Alert>{listError}</Alert>}
+        {loadError && <Alert>{loadError}</Alert>}
+        {notice && <Alert variant="success">{notice}</Alert>}
 
-        {!doctorId ? (
-          <EmptyState>Select a doctor to see the subjects they are assigned to.</EmptyState>
-        ) : loadingAssignments ? (
-          <div><Spinner label="Loading assignments" /> Loading assignments…</div>
-        ) : !assignmentsLoaded ? (
-          // No picker at all. This branch exists because the alternative was measured, not
-          // imagined: an empty checkbox list plus an enabled save button is a request to clear the
-          // doctor, and the read that failed is the only thing that says otherwise. The error
-          // alert above carries the server's wording; this branch makes sure there is nothing
-          // underneath it to click.
-          <Alert>
-            This doctor&rsquo;s subjects could not be read, so there is nothing here to change. Choose another doctor or
-            reload the page — saving from this state would clear the doctor&rsquo;s subjects rather than edit them.
-          </Alert>
-        ) : subjects === null ? (
-          <Alert>
-            The subject list could not be loaded, so there is nothing safe to save here. Reload the page and try again —
-            saving from this state would clear the doctor&rsquo;s subjects rather than change them.
-          </Alert>
-        ) : subjects.length === 0 ? (
-          <EmptyState>There are no subjects yet, so there is nothing to assign. Create a subject first.</EmptyState>
-        ) : (
-          <fieldset className="m-0 grid gap-2.5 border-0 p-0">
-            <legend>Subjects assigned to this doctor</legend>
-            <p className="font-normal text-muted">
-              {assignedCount === 0
-                ? 'None ticked. Saving now removes every subject from this doctor.'
-                : `${assignedCount} subject${assignedCount === 1 ? '' : 's'} ticked.`}
-            </p>
-            {subjects.map((subject) => (
-              <label className="flex items-center gap-[9px] font-semibold [&_input]:h-[17px] [&_input]:w-[17px] [&_input]:accent-[#455B8A]" key={subject.id} htmlFor={`assignment-subject-${subject.id}`}>
-                <input
-                  id={`assignment-subject-${subject.id}`}
-                  type="checkbox"
-                  checked={assigned.has(subject.id)}
-                  disabled={saving}
-                  onChange={() => toggleSubject(subject.id)}
-                />
-                {subject.code} &mdash; {subject.name}
-              </label>
-            ))}
-          </fieldset>
-        )}
+        <p className="rounded-[10px] bg-[#e8edf6] px-4 py-3 text-[0.9rem] font-normal leading-relaxed text-primary-dark">
+          <strong className="font-bold">Removing an assignment deletes nothing.</strong> The doctor loses access to that subject&rsquo;s question bank and sees fewer subjects, while their existing exams remain their own.
+        </p>
+        <p className="rounded-[10px] bg-[#fdebd7] px-4 py-3 text-[0.9rem] font-normal leading-relaxed text-[#8a4a12]">
+          <strong className="font-bold">Check before you empty a subject.</strong> Clearing a subject from its last doctor leaves nobody able to manage its question bank.
+        </p>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Button onClick={() => { void save(); }} disabled={saveDisabled}>
-            {saving ? 'Saving…' : 'Save assignments'}
-          </Button>
-          {doctorId && subjects !== null && assignedCount === 0 && (
-            <span className="font-normal text-muted">Saving with nothing ticked clears every subject from this doctor.</span>
+        <div className="grid gap-[18px] rounded-[14px] border border-[#e3e8f2] bg-white px-5 py-5 shadow-[0_4px_14px_rgb(36_52_80/7%)]">
+          <div className="max-w-[400px]">
+            <Field label="Doctor" htmlFor="assignment-doctor">
+              <Select id="assignment-doctor" value={doctorId} disabled={saving} onChange={(event) => selectDoctor(event.target.value)}>
+                <option value="">Select a doctor</option>
+                {(doctors ?? []).map((doctor) => (
+                  <option key={doctor.id} value={doctor.id}>{doctorOptionLabel(doctor)}</option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+
+          {!doctorId ? (
+            <EmptyState>Select a doctor to see the subjects they are assigned to.</EmptyState>
+          ) : loadingAssignments ? (
+            <div><Spinner label="Loading assignments" /> Loading assignments…</div>
+          ) : !assignmentsLoaded ? (
+            // No picker at all. This branch exists because the alternative was measured, not
+            // imagined: an empty checkbox list plus an enabled save button is a request to clear the
+            // doctor, and the read that failed is the only thing that says otherwise. The error
+            // alert above carries the server's wording; this branch makes sure there is nothing
+            // underneath it to click.
+            <Alert>
+              This doctor&rsquo;s subjects could not be read, so there is nothing here to change. Choose another doctor or
+              reload the page — saving from this state would clear the doctor&rsquo;s subjects rather than edit them.
+            </Alert>
+          ) : subjects === null ? (
+            <Alert>
+              The subject list could not be loaded, so there is nothing safe to save here. Reload the page and try again —
+              saving from this state would clear the doctor&rsquo;s subjects rather than change them.
+            </Alert>
+          ) : subjects.length === 0 ? (
+            <EmptyState>There are no subjects yet, so there is nothing to assign. Create a subject first.</EmptyState>
+          ) : (
+            <fieldset className="m-0 grid gap-3 border-0 p-0">
+              <legend className="flex items-center gap-2">
+                Subjects assigned to this doctor
+                <span className="rounded-full bg-[#e8edf6] px-2.5 py-0.5 text-[0.78rem] font-semibold text-primary-dark">
+                  {assignedCount} selected
+                </span>
+              </legend>
+              {assignedCount === 0 && (
+                <p className="font-normal text-muted">None ticked. Saving now removes every subject from this doctor.</p>
+              )}
+              <div className="grid gap-3 md:grid-cols-2">
+                {subjects.map((subject) => {
+                  const ticked = assigned.has(subject.id);
+                  return (
+                    <label
+                      key={subject.id}
+                      className={`flex cursor-pointer items-center gap-3 rounded-[12px] border px-4 py-3.5 font-semibold ${ticked ? 'border-primary bg-[#eef3fb] text-primary-dark' : 'border-[#dfe5f0] bg-white text-primary-dark'}`}
+                      htmlFor={`assignment-subject-${subject.id}`}
+                    >
+                      <input
+                        id={`assignment-subject-${subject.id}`}
+                        type="checkbox"
+                        className="h-5 w-5 flex-none accent-[#455B8A]"
+                        checked={ticked}
+                        disabled={saving}
+                        onChange={() => toggleSubject(subject.id)}
+                      />
+                      <span><span className="font-mono">{subject.code}</span> — {subject.name}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </fieldset>
           )}
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button onClick={() => { void save(); }} disabled={saveDisabled}>
+              {saving ? 'Saving…' : 'Save assignments'}
+            </Button>
+            {doctorId && subjects !== null && assignedCount === 0 && (
+              <span className="font-normal text-muted">Saving with nothing ticked clears every subject from this doctor.</span>
+            )}
+          </div>
         </div>
       </div>
-    </Card>
+    </div>
   );
 }
