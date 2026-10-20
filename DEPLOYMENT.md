@@ -18,6 +18,12 @@ runner would break with `SESSION_TOKEN_INVALID` on every answer.
 
 ## 1. Hosted database (Neon, free tier)
 
+> **Done (2026-10-20).** Provisioned from this machine with the Neon CLI
+> (`neon init` + `neon deploy`): project `fancy-sun-35674457`, branch
+> `production`. Both connection strings were pulled into the repo-root
+> `.env.local` (gitignored) — read them from there, not the dashboard.
+> `apps/api/.env` already holds the **pooled** URL for local runs.
+
 1. Sign up at <https://neon.tech> and create a project (pick the region closest
    to the university).
 2. From the dashboard, copy **both** connection strings:
@@ -25,6 +31,10 @@ runner would break with `SESSION_TOKEN_INVALID` on every answer.
    - the **direct** one — used once, for migrations
 
 ## 2. Schema and seed (run once, from your machine)
+
+> **Done (2026-10-20).** All 9 migrations applied to the Neon database over the
+> direct URL, and the seed ran over the pooled URL. Safe to re-run:
+> `migrate deploy` is a no-op when up to date and the seed upserts the admin.
 
 Migrations must go through the **direct** URL (PgBouncer-style poolers cannot
 run migrations), the app uses the pooled one:

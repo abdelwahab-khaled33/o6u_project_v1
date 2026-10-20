@@ -23,5 +23,9 @@
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "uuid": "^11.1.1"
+  },
+  "dependencies": {
+    "@neon/config": "^1.9.2",
+    "@neon/env": "^1.6.3"
   }
 }
