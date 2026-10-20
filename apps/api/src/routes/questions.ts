@@ -16,7 +16,11 @@ import { buildQuestionBankWorkbook } from '../services/questions-export.js';
 import { sniffImage } from '../services/image-sniff.js';
 
 const uploadDir = path.resolve(process.cwd(), 'uploads', 'images');
-fs.mkdirSync(uploadDir, { recursive: true });
+try {
+  fs.mkdirSync(uploadDir, { recursive: true });
+} catch (err) {
+  console.warn('uploads directory could not be created', err);
+}
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 

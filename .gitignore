@@ -36,7 +36,7 @@ tmp/
 .playwright-mcp/
 docs/
 infra/
-scripts/
+/scripts/
 AGENTS.md
 MODELS.md
 FILE-INVENTORY.md
@@ -48,3 +48,4 @@ exam-platform-prd.md
 exam-platform-spec.md
 exam-platform-spec-v3.md
 .neon
+.vercel/

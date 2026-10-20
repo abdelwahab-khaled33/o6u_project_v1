@@ -81,3 +81,11 @@ export function createApp() {
 
   return app;
 }
+
+// Vercel entry point: the Node runtime wraps this default-exported Express app as a
+// serverless function. It is evaluated lazily, when the platform invokes the function
+// (not at module load), so the env.ts boot guards fire on cold start with the real
+// production variables present. The framework's catch-all route (/ (.*)) preserves the
+// original request URL, so the routers mounted at /api/v1/... above match as written.
+// Local development never loads this export — `npm run dev` boots src/index.ts on a port.
+export default createApp();

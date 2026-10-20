@@ -1,0 +1,8 @@
+{
+  "functions": {
+    "src/app.ts": {
+      "maxDuration": 60,
+      "includeFiles": "node_modules/@exam/shared/**"
+    }
+  }
+}
