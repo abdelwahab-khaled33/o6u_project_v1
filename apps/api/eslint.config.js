@@ -24,6 +24,7 @@ export default tseslint.config(
             'vitest.config.ts',
             'prisma.config.ts',
             'prisma/seed.ts',
+            'api/index.ts',
           ],
         },
         tsconfigRootDir: import.meta.dirname,
