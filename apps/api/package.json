@@ -19,6 +19,7 @@
     "db:migrate": "prisma migrate dev",
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed-demo": "tsx src/scripts/seed-demo.ts",
     "db:studio": "prisma studio",
     "exams:auto-submit-sweep": "tsx src/scripts/auto-submit-sweep.ts"
   },
