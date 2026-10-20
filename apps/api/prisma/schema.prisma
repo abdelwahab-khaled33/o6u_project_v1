@@ -384,7 +384,7 @@ model ExcelImportLog {
 
 // ---------------------------------------------------------------------------
 // Login throttling (no new dependencies, no Redis: Postgres counters so the
-// 6-8 API processes in infra/DEPLOYMENT.md share one view of failures).
+// 6-8 API processes of a scaled deployment share one view of failures).
 // Only failures are counted and a success deletes the rows, so the exam-start
 // burst of thousands of successful logins can never trip it.
 // The key holds a SHA-256 hash, never a username or IP in plaintext, so the
